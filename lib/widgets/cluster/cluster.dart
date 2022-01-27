@@ -1,6 +1,9 @@
+import 'package:dash_delta/model.dart';
+import 'package:dash_delta/widgets/cluster/info_footer.dart';
 import 'package:flutter/material.dart';
 import 'package:dash_delta/widgets/cluster/power_bar.dart';
 import 'package:dash_delta/widgets/cluster/speedometer.dart';
+import 'package:property_change_notifier/property_change_notifier.dart';
 
 class Cluster extends StatelessWidget {
   const Cluster({  Key? key }) : super(key: key);
@@ -22,14 +25,25 @@ class Cluster extends StatelessWidget {
       */
 
     //print('cluster');
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        Speedometer(),
-        PowerBar()
-        //Text(power.toString())
-      ],
+    return PropertyChangeConsumer<AppModel, String>(
+      properties: const ['clusterOffset'],
+      builder: (context, model, properties) {
+        return AnimatedSlide(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.fastOutSlowIn,
+          offset: model?.clusterOffset ?? const Offset(0,0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Speedometer(),
+              PowerBar(),
+              InfoFooter(),
+              SizedBox(height: 15)
+              //Text(power.toString())
+            ],
+          ),
+        );
+      }
     );
   }
 }

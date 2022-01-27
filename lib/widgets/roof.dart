@@ -8,7 +8,7 @@ class Roof extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['connection_status'],
+      properties: const ['connected'],
       builder: (context, model, properties) {
         final connected = model?.vehicle.connected ?? false;
         return Row(
@@ -17,7 +17,7 @@ class Roof extends StatelessWidget {
           children: [
             IconButton(
               icon: Icon(connected ? Icons.wifi : Icons.wifi_off),
-              iconSize: 20,
+              iconSize: 15,
               visualDensity: VisualDensity.compact,
               onPressed: () => {},
             )

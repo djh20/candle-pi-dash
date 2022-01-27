@@ -6,22 +6,23 @@ import 'package:dash_delta/model.dart';
 
 const double arcRadius = 300;
 
-const double outArcStart = (122 / 360) * pi;
+const double outArcStart = (124 / 360) * pi;
 const double outArcSweep = (70 / 360) * pi;
 
-const double inArcStart = (198 / 360) * pi;
+const double inArcStart = (196 / 360) * pi;
 const double inArcSweep = (40 / 360) * pi;
 
-const Offset center = Offset(0, -arcRadius);
+const Offset center = Offset(0, (-arcRadius)+2);
 final Rect rect = Rect.fromCircle(center: center, radius: arcRadius);
 
 const double inMaxPower = 30;
-const double outMaxPower = 90;
+const double outMaxPower = 80;
+const double arcDeadZone = 0.015;
 
 final arcPaint = Paint()
   ..style = PaintingStyle.stroke
-  ..strokeWidth = 10
-  ..strokeCap = StrokeCap.round;
+  ..strokeWidth = 5;
+  //..strokeCap = StrokeCap.butt;
 
 class PowerBar extends StatelessWidget {
   const PowerBar({ Key? key }) : super(key: key);
@@ -29,21 +30,22 @@ class PowerBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
-    Color contrasting = theme.textTheme.bodyText1?.color ?? Colors.black;
+    Color contrastingColor = theme.textTheme.bodyText1?.color ?? Colors.black;
+    Color hintColor = theme.hintColor;
 
     return SizedBox(
       width: 300,
-      height: 60,
+      height: 45,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CustomPaint(
             painter: BackgroundPainter(
-              contrasting: contrasting 
+              color: hintColor 
             )
           ),
           PowerBarOverlay(
-            contrasting: contrasting,
+            contrasting: contrastingColor,
           )
         ],
       )
@@ -52,17 +54,15 @@ class PowerBar extends StatelessWidget {
 }
 
 class BackgroundPainter extends CustomPainter {
-  final Color contrasting;
+  final Color color;
 
   BackgroundPainter({
-    required this.contrasting
+    required this.color
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    //print('background paint');
-
-    arcPaint.color = contrasting.withOpacity(0.085);
+    arcPaint.color = color;
     
     canvas.drawArc(
       rect,
@@ -98,18 +98,27 @@ class PowerBarOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['power', 'powered'],
+      properties: const ['power', 'powered', 'gear'],
       builder: (context, model, properties) {
         final double power = model?.vehicle.getMetricDouble('power') ?? 0.0;
-        final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
-        
-        return CustomPaint(
-          // Only show overlay if vehicle is powered.
-          painter: powered ? OverlayPainter(
-            contrasting: contrasting,
-            outFactor: (-power / outMaxPower).clamp(0, 1),
-            inFactor: (power / inMaxPower).clamp(0, 1)
-          ) : null
+        //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        final int gear = model?.vehicle.getMetric('gear') ?? 0;
+
+        // Vehicle must be in drive or reverse to show power.
+        final bool visible = (gear == 4 || gear == 2);
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            CustomPaint(
+              // Only show overlay if vehicle is powered.
+              painter: visible ? OverlayPainter(
+                contrasting: contrasting,
+                outFactor: (-power / outMaxPower).clamp(0, 1) - arcDeadZone,
+                inFactor: (power / inMaxPower).clamp(0, 1) - arcDeadZone
+              ) : null
+            ),
+          ]
         );
       }
     );
@@ -130,7 +139,7 @@ class OverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (outFactor > 0) {
-      arcPaint.color = contrasting.withOpacity(0.4);
+      arcPaint.color = contrasting;
 
       canvas.drawArc(
         rect,
@@ -142,7 +151,7 @@ class OverlayPainter extends CustomPainter {
     }
 
     if (inFactor > 0) {
-      arcPaint.color = const Color.fromRGBO(31, 240, 87, 1);
+      arcPaint.color = const Color.fromRGBO(30, 212, 51, 1);
 
       canvas.drawArc(
         rect,

@@ -1,3 +1,4 @@
+import 'package:dash_delta/widgets/drawer/drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:dash_delta/widgets/cluster/cluster.dart';
 import 'package:dash_delta/widgets/roof.dart';
@@ -21,15 +22,19 @@ class Dash extends StatelessWidget {
 
     //print("dash");
 
-    return Padding(
-      padding: const EdgeInsets.all(11.5),
-      child: Stack(
+    //return Padding(
+    //  padding: const EdgeInsets.all(11.5),
+      return Stack(
         fit: StackFit.expand,
         children: const [
-          Cluster(),
-          Roof()
+          Padding(
+            padding: EdgeInsets.all(11.5),
+            child: Cluster(),
+          ),
+          SideDrawer(),
+          Roof(),
         ],
-      )
-    );
+      );
+    //);
   }
 }

@@ -1,5 +1,7 @@
+import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 import 'package:dash_delta/themes.dart';
 import 'package:dash_delta/widgets/routes/home.dart';
@@ -19,10 +21,21 @@ class App extends StatefulWidget {
 class _AppState extends State<App> {
   AppModel model = AppModel();
 
+  final cron = Cron();
+  late ScheduledTask themeTask;
+  late ScheduledTask timeTask;
+  
   @override
   void initState() {
     super.initState();
+    model.init();
     model.vehicle.connect();
+
+    // Update time on every minute.
+    timeTask = cron.schedule(Schedule.parse('*/1 * * * *'), model.updateTime);
+    themeTask = cron.schedule(Schedule.parse('*/20 * * * * *'), model.updateTheme);
+
+    model.updateTime();
   }
 
   @override
@@ -34,14 +47,26 @@ class _AppState extends State<App> {
 
     return PropertyChangeProvider<AppModel, String>( //ChangeNotifierProvider
       value: model,
-      child: MaterialApp(
-        theme: Themes.light,
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const HomePage()
+      child: PropertyChangeConsumer<AppModel, String>(
+        properties: const ['theme'],
+        builder: (context, model, properties) {
+          return MaterialApp(
+            theme: model?.theme,
+            initialRoute: '/',
+            routes: {
+              '/': (context) => const HomePage()
+            },
+            debugShowCheckedModeBanner: false
+          );
         },
-        debugShowCheckedModeBanner: false
-      ),
+      )
     );
+  }
+
+  @override
+  void dispose() {
+    timeTask.cancel();
+    themeTask.cancel();
+    super.dispose();
   }
 }

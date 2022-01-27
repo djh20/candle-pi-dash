@@ -11,19 +11,20 @@ class Speedometer extends StatelessWidget {
     ThemeData theme = Theme.of(context);
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['rear_speed', 'powered', 'gear'],
+      properties: const ['rear_speed', 'powered', 'gear', 'eco'],
       builder: (context, model, properties) {
-        //print('speedo');
-
         final int speed = model?.vehicle.getMetric('rear_speed').round();
         final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final int gear = model?.vehicle.getMetric('gear');
 
         final String gearSymbol = Constants.gearSymbols[gear];
         final String gearLabel = Constants.gearLabels[gear];
 
         final String text = gearSymbol == '' ? speed.toString() : gearSymbol;
-        final Color textColor = theme.textTheme.bodyText1?.color ?? Colors.black;
+        final Color textColor = 
+          (!eco ? theme.textTheme.bodyText1?.color : Colors.green)
+          ?? Colors.black;
 
         return Center(
           child: AnimatedDefaultTextStyle(
@@ -34,12 +35,12 @@ class Speedometer extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(
-                  height: 180,
+                  height: 153,
                   child: Text(
                     text,
                     style: const TextStyle(
                       fontSize: 180, 
-                      //height: 0.6,
+                      height: 0.98,
                       fontWeight: FontWeight.w700
                     ),
                   ),
@@ -55,7 +56,7 @@ class Speedometer extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     //color: textColor.withOpacity(0.3)
                   )
-                )
+                ),
               ],
             )
           )

@@ -6,19 +6,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //final model = context.watch<AppModel>();
-    //print("home");
     return const Scaffold(
-      //backgroundColor: Colors.black,
-      /*
-      body: Center(
-        child: Text(
-          speed.toString(),
-          style: TextStyle(fontSize: 170)
-        )
-      ),
-      */
-
       body: Dash()
     );
   }

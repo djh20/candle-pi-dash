@@ -47,6 +47,19 @@ class Themes {
   static ThemeData light = ThemeData(
     brightness: Brightness.light,
     scaffoldBackgroundColor: Colors.white,
+    cardTheme: const CardTheme(
+      shadowColor: Colors.black45,
+    ),
+    hintColor: Colors.black.withOpacity(0.085)
+  );
+
+  static ThemeData dark = ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: Colors.black,
+    cardTheme: CardTheme(
+      color: Colors.grey[900]
+    ),
+    hintColor: Colors.white.withOpacity(0.25)
   );
   
   
@@ -61,11 +74,6 @@ class Themes {
     )
   );
   */
-
-  static ThemeData dark = ThemeData(
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: Colors.black
-  );
 }
 /*
 class AppTheme {
