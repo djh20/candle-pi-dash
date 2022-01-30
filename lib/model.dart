@@ -1,8 +1,9 @@
-import 'dart:async';
 
 import 'package:dash_delta/themes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 import 'package:dash_delta/vehicle.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -20,37 +21,97 @@ class AppModel extends PropertyChangeNotifier<String> {
   bool _autoTheme = true;
 
   late Light _light;
-  late StreamSubscription _lightSub;
 
   // Initally set to 100 so it starts as light mode.
   int _luxValue = 100;
 
-  PageController hPageController = PageController(
+  final PageController hPageController = PageController(
     initialPage: 0,
     keepPage: true
   );
 
-  PageController vPageController = PageController(
+  final PageController vPageController = PageController(
     initialPage: 0,
     keepPage: true,
     viewportFraction: 0.95
   );
 
-  int _vPage = 0;
+  bool drawerOpen = false;
+  int vPage = 0;
 
-  AudioCache audioPlayer = AudioCache();
+  final AudioCache audioPlayer = AudioCache();
+
+  late AnimationController mapAnimController;
+  late MapController mapController;
+  late Animation<double> mapAnim;
+  late Tween<double> mapLatTween;
+  late Tween<double> mapLngTween;
+  late Tween<double> mapRotTween;
+  LatLng mapPosition = LatLng(0, 0);
+  double mapRotation = 0;
 
   AppModel() {
     vehicle = Vehicle(this);
+    //mapController = MapController();
   }
 
   void init() {
     _light = Light();
     try {
-      _lightSub = _light.lightSensorStream.listen(onLightData);
+      _light.lightSensorStream.listen(onLightData);
     } on LightException catch (exception) {
       debugPrint(exception.toString());
     }
+  }
+
+  @override
+  void dispose() {
+    vehicle.close();
+    super.dispose();
+  }
+
+  void newMap(MapController mController, AnimationController aController) {
+    mController.onReady.then((v) {
+      aController.addListener(() {
+        mController.moveAndRotate(
+          LatLng(
+            mapLatTween.evaluate(mapAnim), 
+            mapLngTween.evaluate(mapAnim)
+          ), 
+          mController.zoom,
+          mapRotTween.evaluate(mapAnim)
+        );
+      });
+      
+      mapController = mController;
+      mapAnimController = aController;
+    });
+  }
+
+  void tweenMap(LatLng position, double rotation) {
+    /// Only update map position if the drawer is open and on the correct
+    /// page. This stops the issue where the controller errors because the
+    /// map widget doesn't exist.
+    if (drawerOpen && vPage == 0) {
+      
+      mapLatTween = Tween<double>(
+        begin: mapPosition.latitude, end: position.latitude
+      );
+      mapLngTween = Tween<double>(
+          begin: mapPosition.longitude, end: position.longitude
+      );
+      mapRotTween = Tween<double>(
+          begin: mapRotation, end: rotation
+      );
+      
+      mapAnim =
+        CurvedAnimation(parent: mapAnimController, curve: Curves.fastOutSlowIn);
+      mapAnimController.reset();
+      mapAnimController.forward();
+    }
+
+    mapPosition = position;
+    mapRotation = rotation;
   }
 
   void onLightData(int luxValue) {
@@ -58,30 +119,27 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
 
   void hPageChanged(int page) {
-    final active = (page == 1);
-    clusterOffset = !active ? const Offset(0,0) : const Offset(-0.21, 0);
+    drawerOpen = (page == 1);
+    clusterOffset = !drawerOpen ? const Offset(0,0) : const Offset(-0.235, 0);
     
-    if (active) {
+    if (drawerOpen) {
       if (vPageController.hasClients) {
         // Animate the vertical pageview to the previously recorded vertical
         // page index. This is a temporary fix for the issue where it returns
         // to the first page upon being rebuilt.
-        /*
         vPageController.animateToPage(
-          _vPage, 
+          vPage, 
           duration: const Duration(milliseconds: 250), 
           curve: Curves.easeInOutQuad
         );
-        */
       }
     }
     
-
     notify("clusterOffset");
   }
 
   void vPageChanged(int page) {
-    _vPage = page;
+    vPage = page;
   }
   
   void setTheme(ThemeData? newTheme) {
@@ -118,6 +176,11 @@ class AppModel extends PropertyChangeNotifier<String> {
     timeUnit = parts[1];
     notify('time');
   }
+
+  /*void updateMap(LatLng pos) {
+    print(pos);
+    mapController.move(pos, mapController.zoom);
+  }*/
   
   void notify(String? property) => notifyListeners(property);
 }

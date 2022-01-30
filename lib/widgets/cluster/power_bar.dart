@@ -12,11 +12,11 @@ const double outArcSweep = (70 / 360) * pi;
 const double inArcStart = (196 / 360) * pi;
 const double inArcSweep = (40 / 360) * pi;
 
-const Offset center = Offset(0, (-arcRadius)+2);
+const Offset center = Offset(0, (-arcRadius)+3);
 final Rect rect = Rect.fromCircle(center: center, radius: arcRadius);
 
 const double inMaxPower = 30;
-const double outMaxPower = 80;
+const double outMaxPower = 85;
 const double arcDeadZone = 0.015;
 
 final arcPaint = Paint()
@@ -35,7 +35,7 @@ class PowerBar extends StatelessWidget {
 
     return SizedBox(
       width: 300,
-      height: 45,
+      height: 25,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -114,8 +114,8 @@ class PowerBarOverlay extends StatelessWidget {
               // Only show overlay if vehicle is powered.
               painter: visible ? OverlayPainter(
                 contrasting: contrasting,
-                outFactor: (-power / outMaxPower).clamp(0, 1) - arcDeadZone,
-                inFactor: (power / inMaxPower).clamp(0, 1) - arcDeadZone
+                outFactor: ((-power / outMaxPower) - arcDeadZone).clamp(0, 1),
+                inFactor: ((power / inMaxPower) - arcDeadZone).clamp(0, 1)
               ) : null
             ),
           ]

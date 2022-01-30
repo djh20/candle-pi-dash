@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:dash_delta/constants.dart';
 import 'package:dash_delta/model.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'package:wakelock/wakelock.dart';
@@ -11,7 +13,7 @@ import 'package:wakelock/wakelock.dart';
 class Vehicle {
   late AppModel model;
 
-  var metrics = <String, dynamic>{};
+  var metrics = <String, List<dynamic>>{};
 
   bool connected = false;
   bool connecting = false;
@@ -27,52 +29,96 @@ class Vehicle {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
   }
 
-  dynamic getMetric(String id) {
-    return metrics[id] ?? 0;
+  dynamic getMetric(String id, [int index = 0]) {
+    return metrics[id]?[index] ?? 0;
   }
 
-  bool getMetricBool(String id) {
-    return metrics[id] == 1 ? true : false;
+  bool getMetricBool(String id, [int index = 0]) {
+    return metrics[id]?[index] == 1 ? true : false;
   }
 
-  double getMetricDouble(String id) {
+  double getMetricDouble(String id, [int index = 0]) {
     // Ensures the value is a double, not a int.
-    return (metrics[id] ?? 0) + .0;
+    return (metrics[id]?[index] ?? 0) + .0;
   }
 
-  void metricUpdated(String id, dynamic value) {
+  void metricUpdated(String id, List<dynamic> data) {
     if (id == 'powered') {
-      value == 1 ? Wakelock.enable() : Wakelock.disable();
+      if (data[0] == 1) {
+        Wakelock.enable();
+      } else {
+        Wakelock.disable();
+        pTracking.setTracking(false);
+        
+        // Close drawer
+        model.drawerOpen = false;
+        model.hPageController.animateToPage(
+          0, 
+          duration: const Duration(milliseconds: 500), 
+          curve: Curves.easeInOutQuad
+        );
+
+        // So we will start on the map page next time the drawer is opened.
+        model.vPage = 0;
+      }
     } else if (id == 'rear_speed') {
-      pTracking.update(value / 1);
-    } else if (id == 'gear') {
-      if (value != 4) pTracking.setTracking(false);
+      pTracking.update(data[0] / 1);
+    
+    } else if (id == 'gps_position' && data.length == 2) {
+      const distance = Distance();
+      final pointA = model.mapPosition;
+      final pointB = LatLng(data[0] + .0, data[1] + .0);
+      
+      final double distanceM = distance.as(
+        LengthUnit.Meter,
+        pointA,
+        pointB
+      );
+
+      /// Update the map only if the vehicle has moved at least 5 meters.
+      /// This stops the map from moving a rotating when the vehicle is not
+      /// moving.
+      if (distanceM >= 5) {
+        // This 
+        final deltaLng = pointB.longitude - pointA.longitude;
+        
+        final x = cos(pointB.latitude) * sin(deltaLng);
+        final y = 
+          cos(pointA.latitude) * sin(pointB.latitude) - sin(pointA.latitude)
+          * cos(pointB.latitude) * cos(deltaLng);
+
+
+        final angle = atan2(x, y) * (180 / pi);
+
+        model.tweenMap(pointB, -angle);
+      }
     }
+   
     model.notify(id);
   }
 
   void process(String data) {
-    //print(data);
-    var decoded = jsonDecode(data);
-
+    final decodedData = jsonDecode(data);
     if (initialized) {
-      int index = decoded[0];
-      dynamic value = decoded[1];
-
+      int index = decodedData[0];
+      List<dynamic> values = decodedData[1];
+      
       String id = metrics.keys.elementAt(index);
-      metrics[id] = value;
-      metricUpdated(id, value);
+      metrics[id] = values;
+      metricUpdated(id, values);
     } else {
-      // This means the data is the first message from the websocket.
-      List<String> ids = List.castFrom(decoded);
+      /// This means the data is the first message from the websocket. The first
+      /// message contains a list of metric ids seperated by commas. We can use
+      /// this list to assign a starting value of [0] for each metric.
+
+      List<String> ids = List.castFrom(decodedData);
 
       for (var id in ids) {
-        metrics[id] = 0;
+        metrics[id] = [0];
       }
+
       initialized = true;
     }
-    //model.text = metrics.toString();
-    //model.update();
   }
 
   void connect() async {
@@ -90,6 +136,15 @@ class Vehicle {
       socket = IOWebSocketChannel(ws);
 
       connecting = false; connected = true;
+
+      const jsonEncoder = JsonEncoder();
+
+      final subscribeMsg = {
+        'event': 'subscribe',
+        'topic': 'metrics'
+      };
+
+      ws.add( jsonEncoder.convert(subscribeMsg) );
 
       model.notify('connected');
       //this.car.model.update();
@@ -116,14 +171,10 @@ class Vehicle {
     socket.sink.close(status.goingAway);
     connected = false;
     initialized = false;
-    //metrics.clear();
 
     debugPrint('[websocket] closed');
 
     model.notify('connected');
-
-    //this.car.reset();
-    //this.car.model.update();
   }
 
   void reconnect() {

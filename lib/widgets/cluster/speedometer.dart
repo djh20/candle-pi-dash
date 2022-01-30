@@ -22,9 +22,10 @@ class Speedometer extends StatelessWidget {
         final String gearLabel = Constants.gearLabels[gear];
 
         final String text = gearSymbol == '' ? speed.toString() : gearSymbol;
-        final Color textColor = 
-          (!eco ? theme.textTheme.bodyText1?.color : Colors.green)
-          ?? Colors.black;
+        final Color textColor =
+          (powered ? 
+          (!eco ? theme.textTheme.bodyText1?.color : Colors.green) :
+          theme.hintColor) ?? Colors.black;
 
         return Center(
           child: AnimatedDefaultTextStyle(

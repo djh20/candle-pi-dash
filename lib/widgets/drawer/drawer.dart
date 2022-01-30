@@ -1,10 +1,10 @@
-import 'dart:ui';
 
 import 'package:dash_delta/constants.dart';
 import 'package:dash_delta/model.dart';
 import 'package:dash_delta/themes.dart';
 import 'package:dash_delta/widgets/drawer/card.dart';
 import 'package:dash_delta/widgets/drawer/metrics_card.dart';
+import 'package:dash_delta/widgets/drawer/navigation_card.dart';
 import 'package:dash_delta/widgets/drawer/performance_card.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
@@ -27,7 +27,7 @@ class SideDrawer extends StatelessWidget {
 
     return OverflowBox(
       minWidth: 0,
-      maxWidth: 260,
+      maxWidth: 295,
       alignment: Alignment.centerRight,
       child: PageView(
         clipBehavior: Clip.none,
@@ -44,13 +44,13 @@ class SideDrawer extends StatelessWidget {
             onPageChanged: model?.vPageChanged,
             //scrollBehavior: NoGlowBehavior(),
             children: [
-              /* DrawerCard(
-                title: 'Navigation',
-                icon: Icons.navigation,
+              const DrawerCard(
+                title: 'Map (Beta)',
+                icon: Icons.map,
                 children: [
-                  Text("Hello, World!")
+                  NavigationCardContent()
                 ],
-              ), */
+              ),
               /*const DrawerCard(
                 title: 'Battery',
                 icon: Icons.battery_full,
@@ -70,7 +70,7 @@ class SideDrawer extends StatelessWidget {
                 icon: Icons.settings,
                 children: [
                   ElevatedButton(
-                    child: Text("LIGHT THEME"),
+                    child: const Text("LIGHT THEME"),
                     style: buttonStyle,
                     onPressed: () {
                       model?.setAutoTheme(false);
@@ -78,7 +78,7 @@ class SideDrawer extends StatelessWidget {
                     },
                   ),
                   ElevatedButton(
-                    child: Text("DARK THEME"),
+                    child: const Text("DARK THEME"),
                     style: buttonStyle,
                     onPressed: () {
                       model?.setAutoTheme(false);
@@ -86,12 +86,12 @@ class SideDrawer extends StatelessWidget {
                     },
                   ),
                   ElevatedButton(
-                    child: Text("AUTO THEME"),
+                    child: const Text("AUTO THEME"),
                     style: buttonStyle,
                     onPressed: () => model?.setAutoTheme(true),
                   ),
                   ElevatedButton(
-                    child: Text("CONNECT TO DEV SERVER"),
+                    child: const Text("CONNECT TO DEV SERVER"),
                     style: buttonStyle,
                     onPressed: () {
                       model?.vehicle.ip = Constants.devIp;

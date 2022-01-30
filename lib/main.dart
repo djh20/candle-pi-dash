@@ -1,9 +1,7 @@
 import 'package:cron/cron.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
-import 'package:dash_delta/themes.dart';
 import 'package:dash_delta/widgets/routes/home.dart';
 import 'package:dash_delta/model.dart';
 

@@ -1,5 +1,4 @@
 import 'package:dash_delta/model.dart';
-import 'package:dash_delta/widgets/drawer/card.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
@@ -18,7 +17,7 @@ class MetricsCardContent extends StatelessWidget {
             items.add(
               Text(
                 '$key: $value',
-                style: TextStyle(fontSize: 13)
+                style: const TextStyle(fontSize: 12)
               )
             );
           });
