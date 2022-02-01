@@ -13,28 +13,16 @@ class Dash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //final model = context.watch<AppModel>();
-
-    //final bool powered = model.vehicle.getMetric("powered") == 1 ? true : false;
-    //final int gear = model.vehicle.getMetric("gear");
-    //final int speed = model.vehicle.getMetric("rear_speed").round();
-    //final double power = model.vehicle.getMetric("power") / 1;
-
-    //print("dash");
-
-    //return Padding(
-    //  padding: const EdgeInsets.all(11.5),
-      return Stack(
-        fit: StackFit.expand,
-        children: const [
-          Padding(
-            padding: EdgeInsets.all(11.5),
-            child: Cluster(),
-          ),
-          SideDrawer(),
-          Roof(),
-        ],
-      );
-    //);
+    return Stack(
+      fit: StackFit.expand,
+      children: const [
+        Padding(
+          padding: EdgeInsets.all(11.5),
+          child: Cluster(),
+        ),
+        SideDrawer(),
+        Roof(),
+      ],
+    );
   }
 }

@@ -10,21 +10,6 @@ class Cluster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //final model = context.watch<AppModel>();
-    
-    //final bool powered = model.vehicle.getMetric("powered") == 1 ? true : false;
-    //final int gear = model.vehicle.getMetric("gear");
-    //final int speed = model.vehicle.getMetric("rear_speed").round();
-    //final double power = model.vehicle.getMetric("power") / 1;
-
-    /*
-    final model = PropertyChangeProvider.of<AppModel, String>(
-      context,
-      properties: []
-      );
-      */
-
-    //print('cluster');
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['clusterOffset'],
       builder: (context, model, properties) {
@@ -47,10 +32,3 @@ class Cluster extends StatelessWidget {
     );
   }
 }
-
-/*
-Text(
-  "47",
-  style: TextStyle(fontSize: 170)
-)
-*/

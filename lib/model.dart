@@ -173,7 +173,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     List<String> parts = fullTime.split(' ');
     
     time = parts[0];
-    timeUnit = parts[1];
+    timeUnit = parts[1].toLowerCase();
     notify('time');
   }
 

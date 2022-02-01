@@ -3,6 +3,7 @@ import 'package:dash_delta/constants.dart';
 import 'package:dash_delta/model.dart';
 import 'package:dash_delta/themes.dart';
 import 'package:dash_delta/widgets/drawer/card.dart';
+import 'package:dash_delta/widgets/drawer/insights_card.dart';
 import 'package:dash_delta/widgets/drawer/metrics_card.dart';
 import 'package:dash_delta/widgets/drawer/navigation_card.dart';
 import 'package:dash_delta/widgets/drawer/performance_card.dart';
@@ -45,10 +46,17 @@ class SideDrawer extends StatelessWidget {
             //scrollBehavior: NoGlowBehavior(),
             children: [
               const DrawerCard(
-                title: 'Map (Beta)',
+                title: 'Map',
                 icon: Icons.map,
                 children: [
                   NavigationCardContent()
+                ],
+              ),
+              const DrawerCard(
+                title: 'Insights', // Insights,
+                icon: Icons.search,
+                children: [
+                  InsightsCardContent()
                 ],
               ),
               /*const DrawerCard(
@@ -98,6 +106,31 @@ class SideDrawer extends StatelessWidget {
                       model?.vehicle.reconnect();
                     },
                   ),
+                  /*
+                  ElevatedButton(
+                    child: const Text("SNACKBAR"),
+                    style: buttonStyle,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(
+                                Icons.warning,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 10),
+                              Text("Battery charge below 10%")
+                            ],
+                          ),
+                          width: 400,
+                          behavior: SnackBarBehavior.floating,
+                          dismissDirection: DismissDirection.startToEnd,
+                        )
+                      );
+                    },
+                  )
+                  */
                 ],
               ),
               const DrawerCard(

@@ -1,3 +1,4 @@
+import 'package:dash_delta/constants.dart';
 import 'package:dash_delta/model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -19,7 +20,6 @@ class _NavigationCardContentState extends State<NavigationCardContent>
   
   @override
   void initState() {
-    // TODO: implement initState
     animController = AnimationController(
       duration: const Duration(milliseconds: 650),
       vsync: this
@@ -44,7 +44,7 @@ class _NavigationCardContentState extends State<NavigationCardContent>
     model?.newMap(mapController, animController);
 
     return SizedBox(
-      height: 283,
+      height: Constants.cardContentHeight,
       child: Stack(
         children: [
           FlutterMap(
@@ -59,7 +59,7 @@ class _NavigationCardContentState extends State<NavigationCardContent>
             layers: [
               TileLayerOptions(
                 tileProvider: const AssetTileProvider(),
-                urlTemplate: "assets/map/{z}-{x}-{y}.png",
+                urlTemplate: "assets/map/{z}-{x}-{y}.png"
               ),
               
               /*TileLayerOptions(

@@ -15,12 +15,23 @@ class Roof extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /*
             IconButton(
               icon: Icon(connected ? Icons.wifi : Icons.wifi_off),
               iconSize: 15,
               visualDensity: VisualDensity.compact,
               onPressed: () => {},
-            )
+            )*/
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 10,
+                top: 10
+              ),
+              child: Icon(
+                connected ? Icons.wifi : Icons.wifi_off,
+                size: 15
+              ),
+            ),
           ],
         );
       }

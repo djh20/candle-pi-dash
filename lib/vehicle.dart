@@ -61,7 +61,7 @@ class Vehicle {
         // So we will start on the map page next time the drawer is opened.
         model.vPage = 0;
       }
-    } else if (id == 'rear_speed') {
+    } else if (id == 'wheel_speed') {
       pTracking.update(data[0] / 1);
     
     } else if (id == 'gps_position' && data.length == 2) {
@@ -75,10 +75,10 @@ class Vehicle {
         pointB
       );
 
-      /// Update the map only if the vehicle has moved at least 5 meters.
+      /// Update the map only if the vehicle has moved at least 8 meters.
       /// This stops the map from moving a rotating when the vehicle is not
       /// moving.
-      if (distanceM >= 5) {
+      if (distanceM >= 8) {
         // This 
         final deltaLng = pointB.longitude - pointA.longitude;
         
@@ -111,8 +111,10 @@ class Vehicle {
       /// message contains a list of metric ids seperated by commas. We can use
       /// this list to assign a starting value of [0] for each metric.
 
-      List<String> ids = List.castFrom(decodedData);
+      metrics.clear();
 
+      List<String> ids = List.castFrom(decodedData);
+      
       for (var id in ids) {
         metrics[id] = [0];
       }
@@ -198,7 +200,9 @@ class PerformanceTracking {
   final List<double> milestoneSpeeds;
   List<PerformanceMilestone> milestones = [];
 
-  PerformanceTracking(this.vehicle, this.milestoneSpeeds);
+  PerformanceTracking(this.vehicle, this.milestoneSpeeds) {
+    reset();
+  }
 
   void setTracking(bool value) {
     tracking = value;

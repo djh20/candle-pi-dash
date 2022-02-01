@@ -10,15 +10,7 @@ class PerformanceCardContent extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['pTracking'],
       builder: (context, model, properties) {
-        //final int gear = model?.vehicle.getMetric('gear') ?? 0;
-        //final double speed = model?.vehicle.getMetricDouble('rear_speed') ?? 0;
-
         final bool tracking = model?.vehicle.pTracking.tracking ?? false;
-        //final bool ready = gear == 4 || tracking;
-
-        /*final String buttonText = 
-          !tracking ? (ready ? "START" : "NOT READY") : "STOP";*/
-
         final String buttonText = !tracking ? "START TRACKING" : "STOP TRACKING";
 
         List<Widget> items = [];

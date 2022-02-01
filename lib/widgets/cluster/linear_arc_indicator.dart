@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 const double arcRadius = 32;
 
-const double startAngle = (-75 / 360) * pi;
-const double sweepAngle = (135 / 360) * pi;
+const double startAngle = (-70 / 360) * pi;
+const double sweepAngle = (140 / 360) * pi;
 
 final arcPaint = Paint()
   ..style = PaintingStyle.stroke

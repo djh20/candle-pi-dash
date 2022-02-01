@@ -98,9 +98,9 @@ class PowerBarOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['power', 'powered', 'gear'],
+      properties: const ['power_output', 'powered', 'gear'],
       builder: (context, model, properties) {
-        final double power = model?.vehicle.getMetricDouble('power') ?? 0.0;
+        final double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
         //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
 
@@ -114,8 +114,8 @@ class PowerBarOverlay extends StatelessWidget {
               // Only show overlay if vehicle is powered.
               painter: visible ? OverlayPainter(
                 contrasting: contrasting,
-                outFactor: ((-power / outMaxPower) - arcDeadZone).clamp(0, 1),
-                inFactor: ((power / inMaxPower) - arcDeadZone).clamp(0, 1)
+                outFactor: ((power / outMaxPower) - arcDeadZone).clamp(0, 1),
+                inFactor: ((-power / inMaxPower) - arcDeadZone).clamp(0, 1)
               ) : null
             ),
           ]
