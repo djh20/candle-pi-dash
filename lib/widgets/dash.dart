@@ -1,7 +1,7 @@
-import 'package:dash_delta/widgets/drawer/drawer.dart';
+import 'package:candle_dash/widgets/drawer/drawer.dart';
 import 'package:flutter/material.dart';
-import 'package:dash_delta/widgets/cluster/cluster.dart';
-import 'package:dash_delta/widgets/roof.dart';
+import 'package:candle_dash/widgets/cluster/cluster.dart';
+import 'package:candle_dash/widgets/roof.dart';
 
 class Dash extends StatelessWidget {
   //final Vehicle vehicle;

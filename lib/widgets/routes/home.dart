@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dash_delta/widgets/dash.dart';
+import 'package:candle_dash/widgets/dash.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({ Key? key }) : super(key: key);

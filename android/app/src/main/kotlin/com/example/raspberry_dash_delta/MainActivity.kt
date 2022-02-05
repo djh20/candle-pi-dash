@@ -1,4 +1,4 @@
-package com.example.dash_delta
+package com.example.candle_dash
 
 import io.flutter.embedding.android.FlutterActivity
 

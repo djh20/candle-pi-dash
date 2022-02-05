@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:dash_delta/constants.dart';
-import 'package:dash_delta/model.dart';
+import 'package:candle_dash/constants.dart';
+import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:web_socket_channel/io.dart';
@@ -76,10 +76,10 @@ class Vehicle {
       );
 
       /// Update the map only if the vehicle has moved at least 8 meters.
-      /// This stops the map from moving a rotating when the vehicle is not
+      /// This stops the map from moving and rotating when the vehicle is not
       /// moving.
       if (distanceM >= 8) {
-        // This 
+        
         final deltaLng = pointB.longitude - pointA.longitude;
         
         final x = cos(pointB.latitude) * sin(deltaLng);
@@ -88,9 +88,10 @@ class Vehicle {
           * cos(pointB.latitude) * cos(deltaLng);
 
 
-        final angle = atan2(x, y) * (180 / pi);
+        final bearing = atan2(x, y) * (180 / pi);
+        final angle = (360 - ((bearing + 360)) % 360);
 
-        model.tweenMap(pointB, -angle);
+        model.tweenMap(pointB, angle);
       }
     }
    

@@ -1,4 +1,4 @@
-import 'package:dash_delta/model.dart';
+import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 

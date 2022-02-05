@@ -9,5 +9,5 @@ class Constants {
   static const List<String> gearSymbols = ['P', 'P', '', 'N', ''];
   static const List<String> gearLabels = ['', '', 'REVERSE', '', 'km/h'];
 
-  static const double cardContentHeight = 283.0;
+  static const double cardContentHeight = 288.0;
 }

@@ -1,5 +1,5 @@
-import 'package:dash_delta/constants.dart';
-import 'package:dash_delta/model.dart';
+import 'package:candle_dash/constants.dart';
+import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 //import 'package:flutter_map/flutter_map.dart';

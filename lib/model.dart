@@ -1,11 +1,11 @@
 
-import 'package:dash_delta/themes.dart';
+import 'package:candle_dash/themes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
-import 'package:dash_delta/vehicle.dart';
+import 'package:candle_dash/vehicle.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:light/light.dart';
 
@@ -52,7 +52,6 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   AppModel() {
     vehicle = Vehicle(this);
-    //mapController = MapController();
   }
 
   void init() {
@@ -73,13 +72,20 @@ class AppModel extends PropertyChangeNotifier<String> {
   void newMap(MapController mController, AnimationController aController) {
     mController.onReady.then((v) {
       aController.addListener(() {
+        var rotation = mapRotTween.evaluate(mapAnim);
+        if (rotation > 360) {
+          rotation -= 360;
+        } else if (rotation < 0) {
+          rotation += 360;
+        }
+
         mController.moveAndRotate(
           LatLng(
             mapLatTween.evaluate(mapAnim), 
             mapLngTween.evaluate(mapAnim)
           ), 
           mController.zoom,
-          mapRotTween.evaluate(mapAnim)
+          rotation
         );
       });
       
@@ -88,20 +94,40 @@ class AppModel extends PropertyChangeNotifier<String> {
     });
   }
 
-  void tweenMap(LatLng position, double rotation) {
+  void tweenMap(LatLng newPosition, double newRotation) {
     /// Only update map position if the drawer is open and on the correct
     /// page. This stops the issue where the controller errors because the
     /// map widget doesn't exist.
     if (drawerOpen && vPage == 0) {
-      
       mapLatTween = Tween<double>(
-        begin: mapPosition.latitude, end: position.latitude
+        begin: mapPosition.latitude, end: newPosition.latitude
       );
       mapLngTween = Tween<double>(
-          begin: mapPosition.longitude, end: position.longitude
+          begin: mapPosition.longitude, end: newPosition.longitude
       );
+
+      /// This logic is a bit weird, but it's to prevent the map from doing a
+      /// large rotation when not necessary. For example:
+      /// 
+      /// If the map is rotating from 20 to 320 degrees, instead of doing a
+      /// 300 degree rotation from 20 to 230, it will do a 50 degree rotation
+      /// from 20 to -30. This stops the map from flipping back and forth when
+      /// the rotation crosses over 360 degrees.
+      
+      final normalMag = (newRotation - mapRotation).abs();
+      final crossPositiveMag = (360 + newRotation) - mapRotation;
+      final crossNegativeMag = mapRotation + (360 - newRotation);
+
+      var tweenRotation = newRotation;
+
+      if (crossPositiveMag < normalMag) {
+        tweenRotation = 360 + newRotation;
+      } else if (crossNegativeMag < normalMag) {
+        tweenRotation = 360 - newRotation;
+      }
+
       mapRotTween = Tween<double>(
-          begin: mapRotation, end: rotation
+          begin: mapRotation, end: tweenRotation
       );
       
       mapAnim =
@@ -110,8 +136,8 @@ class AppModel extends PropertyChangeNotifier<String> {
       mapAnimController.forward();
     }
 
-    mapPosition = position;
-    mapRotation = rotation;
+    mapPosition = newPosition;
+    mapRotation = newRotation;
   }
 
   void onLightData(int luxValue) {
