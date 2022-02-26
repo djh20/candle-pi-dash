@@ -11,7 +11,7 @@ class Cluster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['clusterOffset'],
+      properties: const ['drawer'],
       builder: (context, model, properties) {
         return AnimatedSlide(
           duration: const Duration(milliseconds: 300),
@@ -23,7 +23,7 @@ class Cluster extends StatelessWidget {
               Speedometer(),
               PowerBar(),
               InfoFooter(),
-              SizedBox(height: 15)
+              SizedBox(height: 25)
               //Text(power.toString())
             ],
           ),

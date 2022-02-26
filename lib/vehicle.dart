@@ -25,6 +25,12 @@ class Vehicle {
 
   String ip = Constants.prodIp;
 
+  //Street? street;
+  int? speedLimit;
+  int? lastSpeedLimit;
+
+  double bearingRad = 0;
+
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
   }
@@ -79,19 +85,18 @@ class Vehicle {
       /// This stops the map from moving and rotating when the vehicle is not
       /// moving.
       if (distanceM >= 8) {
-        
         final deltaLng = pointB.longitude - pointA.longitude;
-        
+      
         final x = cos(pointB.latitude) * sin(deltaLng);
         final y = 
           cos(pointA.latitude) * sin(pointB.latitude) - sin(pointA.latitude)
           * cos(pointB.latitude) * cos(deltaLng);
 
-
-        final bearing = atan2(x, y) * (180 / pi);
+        bearingRad = atan2(x, y);
+        final bearing = bearingRad * (180 / pi);
         final angle = (360 - ((bearing + 360)) % 360);
-
-        model.tweenMap(pointB, angle);
+        
+        model.updateMap(pointB, angle);
       }
     }
    

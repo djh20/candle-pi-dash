@@ -21,8 +21,8 @@ const double arcDeadZone = 0.015;
 
 final arcPaint = Paint()
   ..style = PaintingStyle.stroke
-  ..strokeWidth = 5;
-  //..strokeCap = StrokeCap.butt;
+  ..strokeWidth = 3.5;
+  //..strokeCap = StrokeCap.round
 
 class PowerBar extends StatelessWidget {
   const PowerBar({ Key? key }) : super(key: key);
@@ -35,7 +35,7 @@ class PowerBar extends StatelessWidget {
 
     return SizedBox(
       width: 300,
-      height: 25,
+      height: 20,
       child: Stack(
         alignment: Alignment.center,
         children: [

@@ -59,7 +59,7 @@ class Themes {
     cardTheme: CardTheme(
       color: Colors.grey[900]
     ),
-    hintColor: Colors.white.withOpacity(0.25)
+    hintColor: Colors.white.withOpacity(0.2)
   );
   
   

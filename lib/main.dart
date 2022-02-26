@@ -27,29 +27,32 @@ class _AppState extends State<App> {
   void initState() {
     super.initState();
     model.init();
-    model.vehicle.connect();
-
     imageCache?.clear();
+
+    print("init state");
 
     // Update time on every minute.
     timeTask = cron.schedule(Schedule.parse('*/1 * * * *'), model.updateTime);
-    themeTask = cron.schedule(Schedule.parse('*/20 * * * * *'), model.updateTheme);
+    themeTask = cron.schedule(Schedule.parse('*/5 * * * * *'), model.updateTheme);
 
-    model.updateTime();
+    //model.updateTime();
+    //model.updateTheme();
+    
+    model.vehicle.connect();
   }
 
   @override
   Widget build(BuildContext context) {
-    //print('main');
-
-    // Hides the Android status and control bar.
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
-
+    model.updateTheme();
+    model.updateTime();
     return PropertyChangeProvider<AppModel, String>( //ChangeNotifierProvider
       value: model,
       child: PropertyChangeConsumer<AppModel, String>(
         properties: const ['theme'],
         builder: (context, model, properties) {
+          // Hides the Android status and control bar.
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
+          
           return MaterialApp(
             theme: model?.theme,
             initialRoute: '/',

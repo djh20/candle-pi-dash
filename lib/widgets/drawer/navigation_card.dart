@@ -59,14 +59,15 @@ class _NavigationCardContentState extends State<NavigationCardContent>
             layers: [
               TileLayerOptions(
                 tileProvider: const AssetTileProvider(),
-                urlTemplate: "assets/map/{z}-{x}-{y}.png"
+                urlTemplate: "assets/map/tiles/{z}-{x}-{y}.png"
               ),
               
               /*TileLayerOptions(
                 urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                 subdomains: ['a', 'b', 'c']
               )*/
-            ]
+              
+            ],
           ),
           const Center(
             child: Icon(

@@ -1,3 +1,4 @@
+import 'package:candle_dash/widgets/speed_limit_sign.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 import 'package:candle_dash/constants.dart';
@@ -30,10 +31,13 @@ class Speedometer extends StatelessWidget {
         final String gearLabel = Constants.gearLabels[gear];
 
         final String text = gearSymbol == '' ? speed.toString() : gearSymbol;
-        final Color textColor =
+        /*final Color textColor =
           (powered ? 
           (!eco ? theme.textTheme.bodyText1?.color : Colors.green) :
-          theme.hintColor) ?? Colors.black;
+          theme.hintColor) ?? Colors.black;*/
+        final Color textColor = powered ? 
+          (theme.textTheme.bodyText1?.color ?? Colors.black) 
+          : theme.hintColor;
 
         return Center(
           child: AnimatedDefaultTextStyle(
@@ -57,15 +61,32 @@ class Speedometer extends StatelessWidget {
                 const SizedBox(
                   height: 5
                 ),
-                Text(
-                  gearLabel,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1,
-                    fontWeight: FontWeight.w600,
-                    //color: textColor.withOpacity(0.3)
-                  )
-                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      gearLabel,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1,
+                        fontWeight: FontWeight.w600
+                      )
+                    ),
+                    if (eco) const Padding(
+                       padding: EdgeInsets.only(left: 10),
+                       child: Text(
+                        "ECO",
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.green
+                        )
+                    ),
+                     ),
+
+                  ]
+                )
               ],
             )
           )

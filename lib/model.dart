@@ -1,6 +1,11 @@
 
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/themes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,6 +20,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   String time = "";
   String timeUnit = "";
 
+  /// Used for moving the cluster to the side when the drawer is open.
   Offset clusterOffset = const Offset(0,0);
 
   ThemeData theme = Themes.light;
@@ -50,16 +56,32 @@ class AppModel extends PropertyChangeNotifier<String> {
   LatLng mapPosition = LatLng(0, 0);
   double mapRotation = 0;
 
+  List<Street> streets = [];
+
   AppModel() {
     vehicle = Vehicle(this);
   }
 
-  void init() {
+  void init() async {
     _light = Light();
     try {
       _light.lightSensorStream.listen(onLightData);
     } on LightException catch (exception) {
       debugPrint(exception.toString());
+    }
+
+    final String rawStreetData = 
+      await rootBundle.loadString('assets/map/streets.geojson');
+    
+    final streetData = await jsonDecode(rawStreetData);
+    final features = streetData['features'];
+
+    for (var feature in features) {
+      // If the feature is a street, add it to the list of streets.
+      if (feature['geometry']['type'] == 'LineString') {
+        final street = Street.fromFeature(feature);
+        streets.add(street);
+      }
     }
   }
 
@@ -94,7 +116,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     });
   }
 
-  void tweenMap(LatLng newPosition, double newRotation) {
+  void updateMap(LatLng newPosition, double newRotation) {
     /// Only update map position if the drawer is open and on the correct
     /// page. This stops the issue where the controller errors because the
     /// map widget doesn't exist.
@@ -123,12 +145,14 @@ class AppModel extends PropertyChangeNotifier<String> {
       if (crossPositiveMag < normalMag) {
         tweenRotation = 360 + newRotation;
       } else if (crossNegativeMag < normalMag) {
-        tweenRotation = 360 - newRotation;
+        tweenRotation = -crossNegativeMag;
       }
 
       mapRotTween = Tween<double>(
           begin: mapRotation, end: tweenRotation
       );
+
+      //print('$mapRotation -> $newRotation ($tweenRotation)');
       
       mapAnim =
         CurvedAnimation(parent: mapAnimController, curve: Curves.fastOutSlowIn);
@@ -136,10 +160,130 @@ class AppModel extends PropertyChangeNotifier<String> {
       mapAnimController.forward();
     }
 
+    final speedLimit = getSpeedLimit(newPosition, vehicle.speedLimit);
+
+    if (speedLimit != null) {
+      vehicle.lastSpeedLimit = speedLimit;
+    }
+    
+    vehicle.speedLimit = speedLimit;
+
+    notify("speedLimit"); 
+
     mapPosition = newPosition;
     mapRotation = newRotation;
   }
 
+  int? getSpeedLimit(LatLng position, int? currentSpeedLimit) {
+    const R = Constants.earthRadius;
+
+    final latRad = position.latitudeInRad;
+    final lngRad = position.longitudeInRad;
+
+    final List<double> offsets = [10, 40, 60];
+
+    final List<StreetPoint> points = []; 
+    final List<int> speedLimits = [];
+
+    // Get all the points that are within 160m of the main position.
+    for (var street in streets) {
+      for (var pointPos in street.pointPositions) {
+        final distance = getDistance(position, pointPos);
+
+        if (distance <= 160) {
+          points.add( StreetPoint(pointPos, street) );
+        }
+      }
+    }
+
+    // Get the closest point for each offset.
+    for (var offset in offsets) {
+      final offsetLatRad = asin( 
+        sin(latRad) * cos(offset/R) + 
+        cos(latRad) * sin(offset/R)* cos(vehicle.bearingRad)
+      );
+
+      final offsetLngRad = 
+        lngRad + atan2(
+          sin(vehicle.bearingRad) * sin(offset/R)* cos(latRad), 
+          cos(offset/R) - sin(latRad)* sin(offsetLatRad)
+        );
+
+      final offsetPos = LatLng(
+        offsetLatRad * (180/pi),
+        offsetLngRad * (180/pi)
+      );
+
+      StreetPoint? closestPoint;
+      double closestDistance = 90;
+      
+      for (var point in points) {
+        final distance = getDistance(offsetPos, point.position);
+
+        if (distance < closestDistance) {
+          closestPoint = point;
+          closestDistance = distance;
+        }
+      }
+
+      if (closestPoint != null && closestPoint.street.speedLimit != null) {
+        speedLimits.add(closestPoint.street.speedLimit ?? 0);
+      }
+    }
+
+    //speedLimits.clear();
+    debugPrint(speedLimits.toString());
+
+    if (speedLimits.isNotEmpty) {
+      // We need to have at least two speed limits to be confident enough.
+      if (speedLimits.length >= 2) {
+        final consensus = speedLimits.every((v) => v == speedLimits[0]);
+
+        // Only update the speed limit if the offset speed limits are the same.
+        // Otherwise, return the current speed limit so it doesn't change.
+        if (consensus) {
+          return speedLimits[0];
+        }
+      }
+      return currentSpeedLimit;
+    }
+ 
+    return null;
+  }
+
+  double getDistance(LatLng posA, LatLng posB) {
+    const R = Constants.earthRadius;
+  
+    final aLatRad = posA.latitudeInRad;
+    final aLngRad = posA.longitudeInRad;
+
+    final bLatRad = posB.latitudeInRad;
+    final bLngRad = posB.longitudeInRad;
+    
+    final x = (bLngRad-aLngRad) * cos((aLatRad+bLatRad)/2);
+    final y = (bLatRad-aLatRad);
+    final d = sqrt(x*x + y*y) * R;
+
+    return d;
+    
+    
+    /*
+    final deltaLatRad = (bLatRad-aLatRad);
+    final deltaLngRad = (bLngRad-aLngRad);
+
+    final a = sin(deltaLatRad/2) * sin(deltaLatRad/2) +
+              cos(aLatRad) * cos(bLatRad) *
+              sin(deltaLngRad/2) * sin(deltaLngRad/2);
+
+    final c = 2 * atan2(sqrt(a), sqrt(1-a));
+
+    final d = (R * c);
+    
+    return d;
+    */
+  }
+
+  
   void onLightData(int luxValue) {
     _luxValue = luxValue;
   }
@@ -155,13 +299,13 @@ class AppModel extends PropertyChangeNotifier<String> {
         // to the first page upon being rebuilt.
         vPageController.animateToPage(
           vPage, 
-          duration: const Duration(milliseconds: 250), 
+          duration: const Duration(milliseconds: 300), 
           curve: Curves.easeInOutQuad
         );
       }
     }
     
-    notify("clusterOffset");
+    notify("drawer");
   }
 
   void vPageChanged(int page) {
@@ -169,7 +313,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
   
   void setTheme(ThemeData? newTheme) {
-    if (newTheme != null) {
+    if (newTheme != null && theme != newTheme) {
       theme = newTheme;
       notify("theme");
     }
@@ -185,9 +329,9 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void updateTheme() {
     if (_autoTheme) {
-      if (_luxValue >= 30) {
+      if (_luxValue >= 45) {
         setTheme(Themes.light);
-      } else {
+      } else if (_luxValue <= 28) {
         setTheme(Themes.dark);
       }
     }
@@ -203,10 +347,37 @@ class AppModel extends PropertyChangeNotifier<String> {
     notify('time');
   }
 
-  /*void updateMap(LatLng pos) {
-    print(pos);
-    mapController.move(pos, mapController.zoom);
-  }*/
-  
   void notify(String? property) => notifyListeners(property);
+}
+
+class Street {
+  final String? name;
+  final int? speedLimit;
+  final List<LatLng> pointPositions;
+
+  Street(this.name, this.pointPositions, this.speedLimit);
+
+  factory Street.fromFeature(Map<String, dynamic> feature) {
+    final List<LatLng> points = [];
+    final List<dynamic> coordinates = feature['geometry']['coordinates'];
+    final String? maxSpeed = feature['properties']['maxspeed'];
+    
+    for (var point in coordinates) {
+      // Coordinates are the other way around.
+      points.add(LatLng(point[1], point[0]));
+    }
+
+    return Street(
+      feature['properties']['name'],
+      points,
+      maxSpeed != null ? int.parse(maxSpeed) : null
+    );
+  }
+}
+
+class StreetPoint {
+  final LatLng position;
+  final Street street;
+
+  StreetPoint(this.position, this.street);
 }
