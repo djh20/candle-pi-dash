@@ -7,7 +7,7 @@ class Constants {
   static const String devIp = "10.1.2.57";
 
   static const List<String> gearSymbols = ['P', 'P', 'R', 'N', ''];
-  static const List<String> gearLabels = ['', '', '', '', 'km/h'];
+  //static const List<String> gearLabels = ['', '', '', '', 'km/h'];
 
   static const double cardContentHeight = 288.0;
 

@@ -290,7 +290,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void hPageChanged(int page) {
     drawerOpen = (page == 1);
-    clusterOffset = !drawerOpen ? const Offset(0,0) : const Offset(-0.235, 0);
+    clusterOffset = !drawerOpen ? const Offset(0,0) : const Offset(-0.218, 0);
     
     if (drawerOpen) {
       if (vPageController.hasClients) {

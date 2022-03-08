@@ -1,5 +1,6 @@
 import 'package:candle_dash/model.dart';
 import 'package:candle_dash/widgets/cluster/large_unit_text.dart';
+import 'package:candle_dash/widgets/cluster/metric_display.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
@@ -27,9 +28,9 @@ class InfoFooter extends StatelessWidget {
         final double soc = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
         final bool charging = model?.vehicle.getMetricBool('charging') ?? false;
         
-        final double distance = 
-          (model?.vehicle.getMetricDouble('gps_trip_distance') ?? 0) 
-          / 1000; // Convert m to km
+        final String distance = 
+          ((model?.vehicle.getMetricDouble('gps_trip_distance') ?? 0) / 1000)
+          .toStringAsFixed(1);
 
         final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
 
@@ -56,25 +57,22 @@ class InfoFooter extends StatelessWidget {
                 )
               ],
             ),
-            const SizedBox(height: 10),
             
-            Text(
-              'Battery Charge: $soc%',
-              style: TextStyle(
-                fontSize: 18,
-                color: contrasting.withOpacity(0.8)
-              ),
-            ),
             const SizedBox(height: 5),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 500),
               style: TextStyle(
-                fontSize: 18,
-                color: gpsLocked ? contrasting.withOpacity(0.8) : contrasting.withOpacity(0.2)
+                color: gpsLocked ? contrasting : theme.hintColor
               ),
-              child: Text('Travelled: ${distance.toStringAsFixed(1)}km'),
+              child: MetricDisplay(
+                name: 'Distance',
+                value: '${distance}km',
+              ),
             ),
-            
+            MetricDisplay(
+              name: 'Charge',
+              value: '$soc%',
+            )
           ],
         );
       }

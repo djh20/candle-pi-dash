@@ -28,7 +28,7 @@ class Speedometer extends StatelessWidget {
         final int gear = model?.vehicle.getMetric('gear');
 
         final String gearSymbol = Constants.gearSymbols[gear];
-        final String gearLabel = Constants.gearLabels[gear];
+        //final String gearLabel = Constants.gearLabels[gear];
 
         final String text = gearSymbol == '' ? speed.toString() : gearSymbol;
         /*final Color textColor =
@@ -43,17 +43,17 @@ class Speedometer extends StatelessWidget {
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 500),
             style: TextStyle(
-              color: powered ? textColor : textColor.withAlpha(20)
+              color: powered ? textColor : theme.hintColor
             ),
             child: Column(
               children: [
                 SizedBox(
-                  height: 153,
+                  height: 155,
                   child: Text(
                     text,
                     style: const TextStyle(
                       fontSize: 180, 
-                      height: 0.98,
+                      height: 0.95,
                       fontWeight: FontWeight.w700
                     ),
                   ),
@@ -61,6 +61,7 @@ class Speedometer extends StatelessWidget {
                 const SizedBox(
                   height: 5
                 ),
+                /*
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -87,6 +88,7 @@ class Speedometer extends StatelessWidget {
 
                   ]
                 )
+                */
               ],
             )
           )

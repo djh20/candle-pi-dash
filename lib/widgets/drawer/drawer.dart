@@ -28,7 +28,7 @@ class SideDrawer extends StatelessWidget {
 
     return OverflowBox(
       minWidth: 0,
-      maxWidth: 295,
+      maxWidth: 270,
       alignment: Alignment.centerRight,
       child: PageView(
         clipBehavior: Clip.none,

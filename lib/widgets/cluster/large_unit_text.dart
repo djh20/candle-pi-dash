@@ -17,7 +17,7 @@ class LargeUnitText extends StatelessWidget {
         Text(
           text,
           style: const TextStyle(
-            fontSize: 40,
+            fontSize: 42,
             fontWeight: FontWeight.bold
           )
         ),
@@ -30,7 +30,7 @@ class LargeUnitText extends StatelessWidget {
           Text(
             (unit ?? '').toLowerCase(),
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 21,
               height: 2.1
             )
           ),
