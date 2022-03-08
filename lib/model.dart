@@ -329,7 +329,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void updateTheme() {
     if (_autoTheme) {
-      if (_luxValue >= 45) {
+      if (_luxValue >= 60) {
         setTheme(Themes.light);
       } else if (_luxValue <= 28) {
         setTheme(Themes.dark);
