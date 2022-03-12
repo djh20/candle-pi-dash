@@ -92,7 +92,7 @@ class Vehicle {
           cos(pointA.latitude) * sin(pointB.latitude) - sin(pointA.latitude)
           * cos(pointB.latitude) * cos(deltaLng);
 
-        bearingRad = atan2(x, y);
+        final bearingRad = atan2(x, y);
         final bearing = bearingRad * (180 / pi);
         final angle = (360 - ((bearing + 360)) % 360);
         

@@ -20,7 +20,7 @@ class MetricDisplay extends StatelessWidget {
           child: Text(
             name,
             style: const TextStyle(
-              fontSize: 24
+              fontSize: 26
             )
           ),
         ),
@@ -28,7 +28,7 @@ class MetricDisplay extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 26,
             fontWeight: FontWeight.bold
           )
         ),

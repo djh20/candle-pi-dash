@@ -50,7 +50,7 @@ class Themes {
     cardTheme: const CardTheme(
       shadowColor: Colors.black45,
     ),
-    hintColor: Colors.black.withOpacity(0.085)
+    hintColor: Colors.black.withOpacity(0.085),
   );
 
   static ThemeData dark = ThemeData(

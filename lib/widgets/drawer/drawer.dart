@@ -28,7 +28,7 @@ class SideDrawer extends StatelessWidget {
 
     return OverflowBox(
       minWidth: 0,
-      maxWidth: 270,
+      maxWidth: Constants.drawerWidth,
       alignment: Alignment.centerRight,
       child: PageView(
         clipBehavior: Clip.none,
@@ -59,13 +59,6 @@ class SideDrawer extends StatelessWidget {
                   InsightsCardContent()
                 ],
               ),
-              /*const DrawerCard(
-                title: 'Battery',
-                icon: Icons.battery_full,
-                children: [
-                  //PerformanceCardContent()
-                ],
-              ),*/
               const DrawerCard(
                 title: 'Performance',
                 icon: Icons.speed,

@@ -13,18 +13,16 @@ class Cluster extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['drawer'],
       builder: (context, model, properties) {
-        return AnimatedSlide(
+        return AnimatedPadding(
           duration: const Duration(milliseconds: 300),
           curve: Curves.fastOutSlowIn,
-          offset: model?.clusterOffset ?? const Offset(0,0),
+          padding: model?.clusterPadding ?? EdgeInsets.zero,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: const [
               Speedometer(),
               PowerBar(),
               InfoFooter(),
               SizedBox(height: 25)
-              //Text(power.toString())
             ],
           ),
         );

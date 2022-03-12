@@ -1,4 +1,3 @@
-import 'package:candle_dash/widgets/speed_limit_sign.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 import 'package:candle_dash/constants.dart';
@@ -14,8 +13,6 @@ class Speedometer extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['wheel_speed', 'powered', 'gear', 'eco'],
       builder: (context, model, properties) {
-        //final int speed = model?.vehicle.getMetricDouble('wheel_speed').round() ?? 0;
-
         final double leftSpeed = model?.vehicle.getMetricDouble('wheel_speed', 1) ?? 0;
         final double rightSpeed = model?.vehicle.getMetricDouble('wheel_speed', 2) ?? 0;
 
@@ -24,17 +21,12 @@ class Speedometer extends StatelessWidget {
         final int speed = ((leftSpeed + rightSpeed)/2).round();
         
         final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
-        final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final int gear = model?.vehicle.getMetric('gear');
 
         final String gearSymbol = Constants.gearSymbols[gear];
-        //final String gearLabel = Constants.gearLabels[gear];
 
         final String text = gearSymbol == '' ? speed.toString() : gearSymbol;
-        /*final Color textColor =
-          (powered ? 
-          (!eco ? theme.textTheme.bodyText1?.color : Colors.green) :
-          theme.hintColor) ?? Colors.black;*/
+
         final Color textColor = powered ? 
           (theme.textTheme.bodyText1?.color ?? Colors.black) 
           : theme.hintColor;
@@ -48,7 +40,7 @@ class Speedometer extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(
-                  height: 155,
+                  height: 160,
                   child: Text(
                     text,
                     style: const TextStyle(
@@ -57,38 +49,7 @@ class Speedometer extends StatelessWidget {
                       fontWeight: FontWeight.w700
                     ),
                   ),
-                ),
-                const SizedBox(
-                  height: 5
-                ),
-                /*
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      gearLabel,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1,
-                        fontWeight: FontWeight.w600
-                      )
-                    ),
-                    if (eco) const Padding(
-                       padding: EdgeInsets.only(left: 10),
-                       child: Text(
-                        "ECO",
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.green
-                        )
-                    ),
-                     ),
-
-                  ]
                 )
-                */
               ],
             )
           )

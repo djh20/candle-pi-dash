@@ -29,8 +29,6 @@ class _AppState extends State<App> {
     model.init();
     imageCache?.clear();
 
-    print("init state");
-
     // Update time on every minute.
     timeTask = cron.schedule(Schedule.parse('*/1 * * * *'), model.updateTime);
     themeTask = cron.schedule(Schedule.parse('*/5 * * * * *'), model.updateTheme);

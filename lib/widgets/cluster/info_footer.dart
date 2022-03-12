@@ -65,7 +65,7 @@ class InfoFooter extends StatelessWidget {
                 color: gpsLocked ? contrasting : theme.hintColor
               ),
               child: MetricDisplay(
-                name: 'Distance',
+                name: 'Travelled',
                 value: '${distance}km',
               ),
             ),

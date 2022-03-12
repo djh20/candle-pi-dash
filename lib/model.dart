@@ -21,7 +21,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   String timeUnit = "";
 
   /// Used for moving the cluster to the side when the drawer is open.
-  Offset clusterOffset = const Offset(0,0);
+  EdgeInsets clusterPadding = EdgeInsets.zero;
 
   ThemeData theme = Themes.light;
   bool _autoTheme = true;
@@ -265,22 +265,6 @@ class AppModel extends PropertyChangeNotifier<String> {
     final d = sqrt(x*x + y*y) * R;
 
     return d;
-    
-    
-    /*
-    final deltaLatRad = (bLatRad-aLatRad);
-    final deltaLngRad = (bLngRad-aLngRad);
-
-    final a = sin(deltaLatRad/2) * sin(deltaLatRad/2) +
-              cos(aLatRad) * cos(bLatRad) *
-              sin(deltaLngRad/2) * sin(deltaLngRad/2);
-
-    final c = 2 * atan2(sqrt(a), sqrt(1-a));
-
-    final d = (R * c);
-    
-    return d;
-    */
   }
 
   
@@ -290,7 +274,11 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void hPageChanged(int page) {
     drawerOpen = (page == 1);
-    clusterOffset = !drawerOpen ? const Offset(0,0) : const Offset(-0.218, 0);
+
+    clusterPadding = 
+      !drawerOpen ? 
+      EdgeInsets.zero : 
+      const EdgeInsets.only(right: Constants.drawerWidth);
     
     if (drawerOpen) {
       if (vPageController.hasClients) {
@@ -331,7 +319,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     if (_autoTheme) {
       if (_luxValue >= 60) {
         setTheme(Themes.light);
-      } else if (_luxValue <= 28) {
+      } else if (_luxValue <= 26) {
         setTheme(Themes.dark);
       }
     }
