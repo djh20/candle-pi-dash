@@ -11,7 +11,7 @@ class StatusIcon extends StatelessWidget {
     required this.icon,
     this.color,
     this.active = true,
-    this.size = 20
+    this.size = 22
   }) : super(key: key);
 
   @override

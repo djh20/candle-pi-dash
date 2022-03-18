@@ -13,12 +13,12 @@ class Roof extends StatelessWidget {
       properties: const [
         'connected', 
         'speedLimit', 
-        'cc_status',
+        'cc_fan_speed',
         'eco'
       ],
       builder: (context, model, properties) {
         final connected = model?.vehicle.connected ?? false;
-        final bool ccStatus = model?.vehicle.getMetricBool('cc_status') ?? false;
+        final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
 
         return Padding(
@@ -37,7 +37,7 @@ class Roof extends StatelessWidget {
                   const SizedBox(height: 7),
                   StatusIcon(
                     icon: Icons.air,
-                    active: ccStatus,
+                    active: fanSpeed > 0,
                   ),
                   const SizedBox(height: 7),
                   StatusIcon(

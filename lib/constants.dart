@@ -9,7 +9,7 @@ class Constants {
   static const List<String> gearSymbols = ['P', 'P', 'R', 'N', ''];
   //static const List<String> gearLabels = ['', '', '', '', 'km/h'];
 
-  static const double drawerWidth = 270.0;
+  static const double drawerWidth = 260.0;
   static const double cardContentHeight = 288.0;
 
   static const double earthRadius = 6371e3;

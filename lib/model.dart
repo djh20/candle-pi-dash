@@ -17,6 +17,32 @@ import 'package:light/light.dart';
 class AppModel extends PropertyChangeNotifier<String> {
   late Vehicle vehicle;
 
+  final scaffoldKey = GlobalKey<ScaffoldState>();
+
+  final List<Alert> alerts = [
+    Alert(
+      id: "cc_on", 
+      title: "Range may be reduced",
+      subtitle: "Climate control is consuming power",
+      icon: Icons.air
+    ),
+    Alert(
+      id: "low_range", 
+      title: "Low range",
+      subtitle: "Vehicle range is below 10 km",
+      icon: Icons.battery_alert
+    ),
+    Alert(
+      id: "neutral", 
+      title: "Vehicle is in neutral",
+      subtitle: "Switch to drive or reverse",
+      icon: Icons.drive_eta
+    ),
+  ];
+
+  bool alertsEnabled = false;
+  List<Alert> shownAlerts = [];
+
   String time = "";
   String timeUnit = "";
 
@@ -114,6 +140,65 @@ class AppModel extends PropertyChangeNotifier<String> {
       mapController = mController;
       mapAnimController = aController;
     });
+  }
+
+  void showAlert(String id) {
+    if (!alertsEnabled) return;
+    
+    final Alert? alert = alerts.firstWhere((a) => a.id == id);
+    if (alert == null) return;
+
+    // Return if the alert has already been shown.
+    if (shownAlerts.contains(alert)) return;
+    shownAlerts.add(alert);
+
+    final BuildContext? context = scaffoldKey.currentContext;
+    if (context == null) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    
+    messenger.showSnackBar(
+      SnackBar(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(
+          bottom: 45,
+          left: 120,
+          right: 120
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 7),
+        onVisible: () => audioPlayer.play('alert.mp3'),
+        content: Row(
+          children: [
+            Icon(
+              alert.icon,
+              size: 40,
+              color: theme.scaffoldBackgroundColor
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  alert.title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold
+                  )
+                ),
+                Text(
+                  alert.subtitle,
+                  style: const TextStyle(
+                    fontSize: 18
+                  ),
+                ),
+              ],
+            )
+          ],
+        )
+      )
+    );
   }
 
   void updateMap(LatLng newPosition, double newRotation) {
@@ -368,4 +453,18 @@ class StreetPoint {
   final Street street;
 
   StreetPoint(this.position, this.street);
+}
+
+class Alert {
+  final String id;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  
+  Alert({
+    required this.id,
+    required this.icon,
+    required this.title,
+    required this.subtitle
+  });
 }

@@ -106,19 +106,42 @@ class SideDrawer extends StatelessWidget {
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(
+                            bottom: 45,
+                            left: 120,
+                            right: 120
+                          ),
+                          behavior: SnackBarBehavior.floating,
                           content: Row(
                             children: [
                               Icon(
-                                Icons.warning,
-                                color: Colors.white,
+                                Icons.air,
+                                size: 40,
+                                color: model?.theme.scaffoldBackgroundColor,
                               ),
-                              SizedBox(width: 10),
-                              Text("Battery charge below 10%")
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Range may be reduced",
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold
+                                    )
+                                  ),
+                                  Text(
+                                    "Climate control is active",
+                                    style: TextStyle(
+                                      fontSize: 18
+                                    ),
+                                  ),
+                                ],
+                              )
                             ],
-                          ),
-                          width: 400,
-                          behavior: SnackBarBehavior.floating,
-                          dismissDirection: DismissDirection.startToEnd,
+                          )
                         )
                       );
                     },

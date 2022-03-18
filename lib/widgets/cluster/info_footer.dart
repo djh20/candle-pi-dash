@@ -1,6 +1,6 @@
 import 'package:candle_dash/model.dart';
-import 'package:candle_dash/widgets/cluster/large_unit_text.dart';
 import 'package:candle_dash/widgets/cluster/metric_display.dart';
+import 'package:candle_dash/widgets/typography/unit_text.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
@@ -43,12 +43,12 @@ class InfoFooter extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                LargeUnitText(
+                UnitText(
                   model?.time ?? '', 
                   unit: model?.timeUnit ?? ''
                 ),
                 const SizedBox(width: 30),
-                LargeUnitText(range.toString(), unit: 'km'),
+                UnitText(range.toString(), unit: 'km'),
                 LinearArcIndicator(
                   value: soc, 
                   min: 0,
@@ -66,7 +66,7 @@ class InfoFooter extends StatelessWidget {
               ),
               child: MetricDisplay(
                 name: 'Travelled',
-                value: '${distance}km',
+                value: '$distance km',
               ),
             ),
             MetricDisplay(

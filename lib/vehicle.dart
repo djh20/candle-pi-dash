@@ -52,6 +52,7 @@ class Vehicle {
     if (id == 'powered') {
       if (data[0] == 1) {
         Wakelock.enable();
+        model.alertsEnabled = true;
       } else {
         Wakelock.disable();
         pTracking.setTracking(false);
@@ -64,12 +65,25 @@ class Vehicle {
           curve: Curves.easeInOutQuad
         );
 
+        // Allow all alerts to be shown again (for next trip).
+        model.shownAlerts.clear();
+        model.alertsEnabled = false;
+
         // So we will start on the map page next time the drawer is opened.
         model.vPage = 0;
       }
     } else if (id == 'wheel_speed') {
       pTracking.update(data[0] / 1);
+
+    } else if (id == 'gear' && data[0] == 3) {
+      model.showAlert("neutral");
+
+    } else if (id == 'cc_fan_speed' && data[0] > 0) {
+      model.showAlert("cc_on");
     
+    } else if (id == 'range' && data[0] < 10) {
+      model.showAlert("low_range");
+
     } else if (id == 'gps_position' && data.length == 2) {
       const distance = Distance();
       final pointA = model.mapPosition;

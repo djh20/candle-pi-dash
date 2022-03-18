@@ -1,5 +1,6 @@
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/widgets/cluster/linear_arc_indicator.dart';
 import 'package:candle_dash/widgets/typography/unit_text.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
@@ -103,24 +104,37 @@ class InsightsCardContent extends StatelessWidget {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  UnitText(batteryTemp.round().toString(), '°C'),
+                  UnitText(
+                    power.round().toString(),
+                    unit: 'kW',
+                    scale: 0.9
+                  ),
                   const SizedBox(height: 5),
-                  UnitText(power.round().toString(), 'kW'),
+                  UnitText(
+                    batteryTemp.round().toString(),
+                    unit: '°C',
+                    scale: 0.65
+                  )
                 ],
               ),
-              //UnitText(batteryTemp.round().toString(), '°C'),
-              /*
               Positioned(
-                top: 0,
-                left: 80,
-                child: UnitText(motorTemp.round().toString(), '°C'),
+                top: 19,
+                left: 110,
+                child: UnitText(
+                  motorTemp.round().toString(),
+                  unit: '°C',
+                  scale: 0.4
+                ),
               ),
               Positioned(
-                top: 57,
-                left: 70,
-                child: UnitText(inverterTemp.round().toString(), '°C'),
+                top: 56,
+                left: 106,
+                child: UnitText(
+                  inverterTemp.round().toString(),
+                  unit: '°C',
+                  scale: 0.4
+                ),
               )
-              */
             ]
           ),
         );

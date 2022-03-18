@@ -54,9 +54,10 @@ class _AppState extends State<App> {
           return MaterialApp(
             theme: model?.theme,
             initialRoute: '/',
-            routes: {
-              '/': (context) => const HomePage()
-            },
+            home: Scaffold(
+              key: model?.scaffoldKey,
+              body: const HomePage()
+            ),
             debugShowCheckedModeBanner: false
           );
         },
