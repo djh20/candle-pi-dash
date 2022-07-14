@@ -142,6 +142,13 @@ class AppModel extends PropertyChangeNotifier<String> {
     });
   }
 
+  ScaffoldMessengerState? get messenger {
+    final BuildContext? context = scaffoldKey.currentContext;
+    if (context == null) return null;
+
+    return ScaffoldMessenger.of(context);
+  }
+
   void showAlert(String id) {
     if (!alertsEnabled) return;
     
@@ -151,13 +158,8 @@ class AppModel extends PropertyChangeNotifier<String> {
     // Return if the alert has already been shown.
     if (shownAlerts.contains(alert)) return;
     shownAlerts.add(alert);
-
-    final BuildContext? context = scaffoldKey.currentContext;
-    if (context == null) return;
-
-    final messenger = ScaffoldMessenger.of(context);
     
-    messenger.showSnackBar(
+    messenger?.showSnackBar(
       SnackBar(
         padding: const EdgeInsets.all(12),
         margin: const EdgeInsets.only(
@@ -402,7 +404,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void updateTheme() {
     if (_autoTheme) {
-      if (_luxValue >= 60) {
+      if (_luxValue >= 80) {
         setTheme(Themes.light);
       } else if (_luxValue <= 26) {
         setTheme(Themes.dark);
