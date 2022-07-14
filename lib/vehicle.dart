@@ -75,9 +75,13 @@ class Vehicle {
     } else if (id == 'wheel_speed') {
       pTracking.update(data[0] / 1);
 
-    } else if (id == 'gear' && data[0] == 3) {
-      model.showAlert("neutral");
-
+    } else if (id == 'gear') {
+      if (data[0] == 3) {
+        model.showAlert("neutral");
+      } else {
+        model.messenger?.clearSnackBars();
+      }
+      
     } else if (id == 'cc_fan_speed' && data[0] > 0) {
       model.showAlert("cc_on");
     
