@@ -19,8 +19,8 @@ class Cluster extends StatelessWidget {
           padding: model?.clusterPadding ?? EdgeInsets.zero,
           child: Column(
             children: const [
-              Speedometer(),
               PowerBar(),
+              Speedometer(),
               InfoFooter(),
               SizedBox(height: 25)
             ],

@@ -1,174 +1,56 @@
-import 'dart:math';
-
+import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
-import 'package:candle_dash/model.dart';
-
-const double arcRadius = 500;
-
-const double outArcStart = (149.75 / 360) * pi;
-const double outArcSweep = (30 / 360) * pi;
-
-const double inArcStart = (180.25 / 360) * pi;
-const double inArcSweep = (30 / 360) * pi;
-
-const Offset center = Offset(0, (-arcRadius)-3);
-final Rect rect = Rect.fromCircle(center: center, radius: arcRadius);
 
 const double inMaxPower = 30;
 const double outMaxPower = 85;
-const double arcDeadZone = 0.015;
-
-final arcPaint = Paint()
-  ..style = PaintingStyle.stroke
-  ..strokeWidth = 5;
-  //..strokeCap = StrokeCap.round
+//const double deadZone = 0.015;
 
 class PowerBar extends StatelessWidget {
-  const PowerBar({ Key? key }) : super(key: key);
+  const PowerBar({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    ThemeData theme = Theme.of(context);
-    Color contrastingColor = theme.textTheme.bodyText1?.color ?? Colors.black;
-    Color hintColor = theme.hintColor;
+    final ThemeData theme = Theme.of(context);
+    final Color contrastingColor = theme.textTheme.bodyText1?.color ?? Colors.black;
+    final Color outColor = contrastingColor.withAlpha(200);
+    const Color inColor = Color.fromRGBO(30, 212, 51, 1);
 
-    return SizedBox(
-      width: 300,
-      height: 10,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            painter: BackgroundPainter(
-              color: hintColor 
-            )
-          ),
-          PowerBarOverlay(
-            contrasting: contrastingColor,
-          )
-        ],
-      )
-    );
-  }
-}
-
-class BackgroundPainter extends CustomPainter {
-  final Color color;
-
-  BackgroundPainter({
-    required this.color
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    arcPaint.color = color;
-    
-    canvas.drawArc(
-      rect,
-      outArcStart,
-      outArcSweep,
-      false, 
-      arcPaint
-    );
-
-    canvas.drawArc(
-      rect,
-      inArcStart,
-      inArcSweep,
-      false, 
-      arcPaint
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-  @override
-  bool shouldRebuildSemantics(covariant CustomPainter oldDelegate) => false;
-}
-
-class PowerBarOverlay extends StatelessWidget {
-  final Color contrasting;
-
-  const PowerBarOverlay({
-     Key? key,
-     required this.contrasting
-   }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['power_output', 'powered', 'gear'],
       builder: (context, model, properties) {
-        final double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
-        //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
 
         // Vehicle must be in drive or reverse to show power.
         final bool visible = (gear == 4 || gear == 2);
+        if (!visible) power = 0;
 
-        return Stack(
-          alignment: Alignment.center,
+        return Row(
           children: [
-            CustomPaint(
-              // Only show overlay if vehicle is powered.
-              painter: visible ? OverlayPainter(
-                contrasting: contrasting,
-                outFactor: ((power / outMaxPower) - arcDeadZone).clamp(0, 1),
-                inFactor: ((-power / inMaxPower) - arcDeadZone).clamp(0, 1)
-              ) : null
+            Expanded(
+              child: FractionallySizedBox(
+                alignment: Alignment.topRight,
+                widthFactor: ((-power / inMaxPower)).clamp(0, 1),
+                child: Container(
+                  color: inColor,
+                  height: 5
+                ),
+              ),
             ),
-          ]
+            Expanded(
+              child: FractionallySizedBox(
+                alignment: Alignment.topLeft,
+                widthFactor: ((power / outMaxPower)).clamp(0, 1),
+                child: Container(
+                  color: outColor,
+                  height: 5
+                ),
+              ),
+            )
+          ],
         );
       }
-    );
-  }
-}
-
-class OverlayPainter extends CustomPainter {
-  final Color contrasting;
-  final double inFactor;
-  final double outFactor;
-
-  OverlayPainter({
-    required this.contrasting,
-    this.inFactor = 0,
-    this.outFactor = 0
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (outFactor > 0) {
-      arcPaint.color = contrasting;
-
-      canvas.drawArc(
-        rect,
-        outArcStart + (outArcSweep * (1-outFactor)),
-        outArcSweep * outFactor,
-        false, 
-        arcPaint
-      );
-    }
-
-    if (inFactor > 0) {
-      arcPaint.color = const Color.fromRGBO(30, 212, 51, 1);
-
-      canvas.drawArc(
-        rect,
-        inArcStart,
-        inArcSweep * inFactor,
-        false, 
-        arcPaint
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant OverlayPainter oldDelegate) {
-    // Arcs should be repainted if values have changed.
-    return (
-      oldDelegate.inFactor != inFactor || 
-      oldDelegate.outFactor != outFactor
     );
   }
 }
