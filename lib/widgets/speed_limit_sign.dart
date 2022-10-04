@@ -14,7 +14,7 @@ class SpeedLimitSign extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedOpacity(
       opacity: visible ? 1.0 : 0.0,
-      duration: const Duration(seconds: 1),
+      duration: const Duration(milliseconds: 500),
       child: Row(
         children: [
           /*
@@ -30,16 +30,16 @@ class SpeedLimitSign extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               Container(
-                height: 56,
-                width: 56,
+                height: 68,
+                width: 68,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.red
                 ),
               ),
               Container(
-                height: 42,
-                width: 42,
+                height: 52,
+                width: 52,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white
@@ -50,7 +50,7 @@ class SpeedLimitSign extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.black,
-                  fontSize: 21,
+                  fontSize: 27,
                   fontWeight: FontWeight.bold
                 ),
               )
