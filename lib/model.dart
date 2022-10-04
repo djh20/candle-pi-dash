@@ -22,21 +22,24 @@ class AppModel extends PropertyChangeNotifier<String> {
   final List<Alert> alerts = [
     Alert(
       id: "cc_on", 
-      title: "Range may be reduced",
+      title: "Range is reduced",
       subtitle: "Climate control is consuming power",
-      icon: Icons.air
+      icon: Icons.air,
+      sound: "info.mp3"
     ),
     Alert(
       id: "low_range", 
       title: "Low range",
-      subtitle: "Vehicle range is below 10 km",
-      icon: Icons.battery_alert
+      subtitle: "Vehicle range is at 10km",
+      icon: Icons.battery_alert,
+      sound: "critical.mp3"
     ),
     Alert(
       id: "neutral", 
       title: "Vehicle is in neutral",
       subtitle: "Switch to drive or reverse",
-      icon: Icons.drive_eta
+      icon: Icons.drive_eta,
+      sound: "info.mp3"
     ),
   ];
 
@@ -169,7 +172,7 @@ class AppModel extends PropertyChangeNotifier<String> {
         ),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 7),
-        onVisible: () => audioPlayer.play('alert.mp3'),
+        onVisible: () => audioPlayer.play(alert.sound),
         content: Row(
           children: [
             Icon(
@@ -267,17 +270,17 @@ class AppModel extends PropertyChangeNotifier<String> {
     final latRad = position.latitudeInRad;
     final lngRad = position.longitudeInRad;
 
-    final List<double> offsets = [10, 40, 60];
+    final List<double> offsets = [40, 60, 80, 100];
 
     final List<StreetPoint> points = []; 
     final List<int> speedLimits = [];
 
-    // Get all the points that are within 160m of the main position.
+    // Get all the points that are within 500m of the main position.
     for (var street in streets) {
       for (var pointPos in street.pointPositions) {
         final distance = getDistance(position, pointPos);
 
-        if (distance <= 160) {
+        if (distance <= 500) {
           points.add( StreetPoint(pointPos, street) );
         }
       }
@@ -302,7 +305,7 @@ class AppModel extends PropertyChangeNotifier<String> {
       );
 
       StreetPoint? closestPoint;
-      double closestDistance = 90;
+      double closestDistance = 100;
       
       for (var point in points) {
         final distance = getDistance(offsetPos, point.position);
@@ -314,12 +317,13 @@ class AppModel extends PropertyChangeNotifier<String> {
       }
 
       if (closestPoint != null && closestPoint.street.speedLimit != null) {
+        //debugPrint(closestPoint.street.name);
         speedLimits.add(closestPoint.street.speedLimit ?? 0);
       }
     }
 
     //speedLimits.clear();
-    debugPrint(speedLimits.toString());
+    //debugPrint(speedLimits.toString());
 
     if (speedLimits.isNotEmpty) {
       // We need to have at least two speed limits to be confident enough.
@@ -404,7 +408,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void updateTheme() {
     if (_autoTheme) {
-      if (_luxValue >= 80) {
+      if (_luxValue >= 100) {
         setTheme(Themes.light);
       } else if (_luxValue <= 26) {
         setTheme(Themes.dark);
@@ -462,11 +466,13 @@ class Alert {
   final IconData icon;
   final String title;
   final String subtitle;
+  final String sound;
   
   Alert({
     required this.id,
     required this.icon,
     required this.title,
-    required this.subtitle
+    required this.subtitle,
+    this.sound = 'alert.mp3'
   });
 }

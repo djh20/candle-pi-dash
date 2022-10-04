@@ -85,7 +85,7 @@ class Vehicle {
     } else if (id == 'cc_fan_speed' && data[0] > 0) {
       model.showAlert("cc_on");
     
-    } else if (id == 'range' && data[0] < 10) {
+    } else if (id == 'range' && data[0] <= 10) {
       model.showAlert("low_range");
 
     } else if (id == 'gps_position' && data.length == 2) {
