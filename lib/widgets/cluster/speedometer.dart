@@ -11,7 +11,7 @@ class Speedometer extends StatelessWidget {
     ThemeData theme = Theme.of(context);
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['wheel_speed', 'powered', 'gear', 'eco'],
+      properties: const ['wheel_speed', 'powered', 'gear', 'eco', 'drawer'],
       builder: (context, model, properties) {
         final double leftSpeed = model?.vehicle.getMetricDouble('wheel_speed', 1) ?? 0;
         final double rightSpeed = model?.vehicle.getMetricDouble('wheel_speed', 2) ?? 0;
@@ -21,6 +21,7 @@ class Speedometer extends StatelessWidget {
         final int speed = ((leftSpeed + rightSpeed)/2).round();
         
         final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        final bool drawerOpen = model?.drawerOpen ?? false;
         final int gear = model?.vehicle.getMetric('gear');
 
         final String gearSymbol = Constants.gearSymbols[gear];
@@ -33,28 +34,26 @@ class Speedometer extends StatelessWidget {
 
         return Center(
           child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 500),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.fastOutSlowIn,
             style: TextStyle(
-              color: powered ? textColor : theme.hintColor
+              color: powered ? textColor : theme.hintColor,
+              fontSize: !drawerOpen ? 180 : 155
             ),
             child: Column(
               children: [
-                SizedBox(
-                  height: 160,
-                  child: Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 180, 
-                      height: 0.95,
-                      fontWeight: FontWeight.w700
-                    ),
+                const SizedBox(height: 85),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    height: 0.45,
+                    fontWeight: FontWeight.w700
                   ),
-                )
+                ),
               ],
             )
           )
         );
-
       }
     );
   }
