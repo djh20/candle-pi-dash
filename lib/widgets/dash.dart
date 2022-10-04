@@ -17,7 +17,7 @@ class Dash extends StatelessWidget {
       fit: StackFit.expand,
       children: const [
         Padding(
-          padding: EdgeInsets.fromLTRB(10, 15, 10, 10),
+          padding: EdgeInsets.fromLTRB(10, 8, 10, 10),
           child: Cluster(),
         ),
         SideDrawer(),
