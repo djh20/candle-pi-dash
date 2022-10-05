@@ -16,7 +16,8 @@ class Roof extends StatelessWidget {
         'cc_fan_speed',
         'eco',
         'drawer',
-        'powered'
+        'powered',
+        'gear'
       ],
       builder: (context, model, properties) {
         final connected = model?.vehicle.connected ?? false;
@@ -24,6 +25,8 @@ class Roof extends StatelessWidget {
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
         final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        final int gear = model?.vehicle.getMetric('gear') ?? 0;
+        final bool parked = (gear <= 1);
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
@@ -31,30 +34,34 @@ class Roof extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  StatusIcon(
-                    icon: Icons.wifi,
-                    active: connected
-                  ),
-                  const SizedBox(height: 7),
-                  StatusIcon(
-                    icon: Icons.air,
-                    active: fanSpeed > 0,
-                    activeText: fanSpeed.toString(),
-                    compact: drawerOpen
-                  ),
-                  const SizedBox(height: 7),
-                  StatusIcon(
-                    icon: Icons.eco,
-                    active: eco,
-                    activeText: "ECO",
-                    color: Colors.green,
-                    compact: drawerOpen
-                  ),
-                ]
+              AnimatedPadding(
+                padding: EdgeInsets.only(top: parked ? 0 : 16),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.fastOutSlowIn,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StatusIcon(
+                      icon: Icons.wifi,
+                      active: connected
+                    ),
+                    const SizedBox(height: 7),
+                    StatusIcon(
+                      icon: Icons.air,
+                      active: fanSpeed > 0,
+                      activeText: fanSpeed.toString(),
+                      compact: drawerOpen
+                    ),
+                    const SizedBox(height: 7),
+                    StatusIcon(
+                      icon: Icons.eco,
+                      active: eco,
+                      activeText: "ECO",
+                      color: Colors.green,
+                      compact: drawerOpen
+                    ),
+                  ]
+                ),
               ),
               
               AnimatedPadding(
@@ -67,7 +74,7 @@ class Roof extends StatelessWidget {
                   curve: Curves.fastOutSlowIn,
                   alignment: Alignment.topRight,
                   child: SpeedLimitSign(
-                    visible: (model?.vehicle.speedLimit != null) && powered,
+                    visible: model?.vehicle.speedLimit != null && !parked,
                     speedLimit: model?.vehicle.lastSpeedLimit ?? 0
                   ),
                 )
