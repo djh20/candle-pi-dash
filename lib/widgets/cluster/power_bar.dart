@@ -22,8 +22,8 @@ class PowerBar extends StatelessWidget {
         final double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
 
-        // Vehicle must be in drive or reverse to show power.
-        final bool visible = (gear == 4 || gear == 2);
+        // Vehicle must not be in park to show power.
+        final bool visible = (gear > 1);
         
         return AnimatedOpacity(
           opacity: visible ? 1 : 0,
