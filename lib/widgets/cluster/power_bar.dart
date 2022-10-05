@@ -4,7 +4,7 @@ import 'package:property_change_notifier/property_change_notifier.dart';
 
 const double inMaxPower = 30;
 const double outMaxPower = 80;
-const double deadZone = 0.015;
+//const double deadZone = 0.015;
 
 class PowerBar extends StatelessWidget {
   const PowerBar({Key? key}) : super(key: key);
@@ -32,18 +32,18 @@ class PowerBar extends StatelessWidget {
             children: [
               PowerBarSegment(
                 alignment: Alignment.centerRight,
-                widthFactor: ((-power / inMaxPower) - deadZone).clamp(0, 1),
+                widthFactor: ((-power / inMaxPower)).clamp(0, 1),
                 color: inColor,
-                notches: (inMaxPower ~/ 10)
+                notches: (inMaxPower ~/ 10) + 1
               ),
 
-              const SizedBox(width: 1),
+              const SizedBox(width: 4),
 
               PowerBarSegment(
                 alignment: Alignment.centerLeft,
-                widthFactor: ((power / outMaxPower) - deadZone).clamp(0, 1),
+                widthFactor: ((power / outMaxPower)).clamp(0, 1),
                 color: outColor,
-                notches: (outMaxPower ~/ 10)
+                notches: (outMaxPower ~/ 10) + 1
               )
             ],
           ),
