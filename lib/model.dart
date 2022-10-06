@@ -9,12 +9,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 import 'package:candle_dash/vehicle.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:light/light.dart';
 
 class AppModel extends PropertyChangeNotifier<String> {
+  late PackageInfo packageInfo;
   late Vehicle vehicle;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
@@ -92,6 +94,8 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
 
   void init() async {
+    packageInfo = await PackageInfo.fromPlatform();
+    
     _light = Light();
     try {
       _light.lightSensorStream.listen(onLightData);
