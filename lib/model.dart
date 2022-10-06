@@ -270,7 +270,12 @@ class AppModel extends PropertyChangeNotifier<String> {
     final latRad = position.latitudeInRad;
     final lngRad = position.longitudeInRad;
 
-    final List<double> offsets = [40, 60, 80, 100];
+    final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
+
+    final int gap = vehicleSpeed ~/ 1.5;
+    final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
+
+    //debugPrint("$offsets");
 
     final List<StreetPoint> points = []; 
     final List<int> speedLimits = [];
@@ -305,10 +310,12 @@ class AppModel extends PropertyChangeNotifier<String> {
       );
 
       StreetPoint? closestPoint;
-      double closestDistance = 100;
+      double closestDistance = double.infinity;
       
       for (var point in points) {
         final distance = getDistance(offsetPos, point.position);
+
+        //debugPrint("${point.street.name}: $distance");
 
         if (distance < closestDistance) {
           closestPoint = point;
@@ -317,7 +324,7 @@ class AppModel extends PropertyChangeNotifier<String> {
       }
 
       if (closestPoint != null && closestPoint.street.speedLimit != null) {
-        //debugPrint(closestPoint.street.name);
+        //debugPrint('$offset: ${closestPoint.street.name} (${closestPoint.street.speedLimit}) $offsetPos');
         speedLimits.add(closestPoint.street.speedLimit ?? 0);
       }
     }
@@ -329,6 +336,14 @@ class AppModel extends PropertyChangeNotifier<String> {
       // We need to have at least two speed limits to be confident enough.
       if (speedLimits.length >= 2) {
         final consensus = speedLimits.every((v) => v == speedLimits[0]);
+
+        final speedDiff = vehicleSpeed - speedLimits[0];
+
+        // Assume the speed limit is invalid if the vehicle is travelling significantly
+        // faster than it. The purpose of this is to reduce the amount of incorrect speed 
+        // limit detections, as someone will likely not be travelling 30 km/h faster than
+        // the actual speed limit.
+        if (speedDiff >= 30) return null;
 
         // Only update the speed limit if the offset speed limits are the same.
         // Otherwise, return the current speed limit so it doesn't change.
@@ -407,7 +422,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
 
   void updateTheme() {
-    debugPrint(_luxValue.toString());
+    //debugPrint(_luxValue.toString());
     if (_autoTheme) {
       if (_luxValue >= 150) {
         setTheme(Themes.light);

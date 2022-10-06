@@ -99,10 +99,10 @@ class Vehicle {
         pointB
       );
 
-      /// Update the map only if the vehicle has moved at least 8 meters.
+      /// Update the map only if the vehicle has moved at least 5m.
       /// This stops the map from moving and rotating when the vehicle is not
       /// moving.
-      if (distanceM >= 8) {
+      if (distanceM >= 5) {
         final deltaLng = pointB.longitude - pointA.longitude;
       
         final x = cos(pointB.latitude) * sin(deltaLng);
@@ -110,7 +110,7 @@ class Vehicle {
           cos(pointA.latitude) * sin(pointB.latitude) - sin(pointA.latitude)
           * cos(pointB.latitude) * cos(deltaLng);
 
-        final bearingRad = atan2(x, y);
+        bearingRad = atan2(x, y);
         final bearing = bearingRad * (180 / pi);
         final angle = (360 - ((bearing + 360)) % 360);
         
