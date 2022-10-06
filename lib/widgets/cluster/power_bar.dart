@@ -1,10 +1,12 @@
+import 'dart:math';
+
 import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
 const double inMaxPower = 30;
 const double outMaxPower = 80;
-//const double deadZone = 0.015;
+const double deadZone = 0.8;
 
 class PowerBar extends StatelessWidget {
   const PowerBar({Key? key}) : super(key: key);
@@ -19,17 +21,33 @@ class PowerBar extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['power_output', 'powered', 'gear'],
       builder: (context, model, properties) {
-        final double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
+        double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
 
         // Vehicle must not be in park to show power.
         final bool visible = (gear > 1);
+
+        if (power.abs() < deadZone) power = 0;
         
         return AnimatedOpacity(
           opacity: visible ? 1 : 0,
           duration: const Duration(milliseconds: 250),
           child: Row(
             children: [
+              /*
+              SizedBox(
+                width: 28,
+                child: Text(
+                  min(0, power).round().toString(),
+                  textAlign: TextAlign.start,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: inColor
+                  )
+                )
+              ),
+              */
+
               PowerBarSegment(
                 alignment: Alignment.centerRight,
                 widthFactor: ((-power / inMaxPower)).clamp(0, 1),
@@ -37,14 +55,27 @@ class PowerBar extends StatelessWidget {
                 notches: (inMaxPower ~/ 10) + 1
               ),
 
-              const SizedBox(width: 4),
+              const SizedBox(width: 1),
 
               PowerBarSegment(
                 alignment: Alignment.centerLeft,
                 widthFactor: ((power / outMaxPower)).clamp(0, 1),
                 color: outColor,
                 notches: (outMaxPower ~/ 10) + 1
+              ),
+              
+              /*
+              SizedBox(
+                width: 28,
+                child: Text(
+                  max(0, power).round().toString(),
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold
+                  )
+                )
               )
+              */
             ],
           ),
         );
