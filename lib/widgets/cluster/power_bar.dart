@@ -34,25 +34,10 @@ class PowerBar extends StatelessWidget {
           duration: const Duration(milliseconds: 250),
           child: Row(
             children: [
-              /*
-              SizedBox(
-                width: 28,
-                child: Text(
-                  min(0, power).round().toString(),
-                  textAlign: TextAlign.start,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: inColor
-                  )
-                )
-              ),
-              */
-
               PowerBarSegment(
                 alignment: Alignment.centerRight,
                 widthFactor: ((-power / inMaxPower)).clamp(0, 1),
-                color: inColor,
-                notches: (inMaxPower ~/ 10) + 1
+                color: inColor
               ),
 
               const SizedBox(width: 1),
@@ -60,22 +45,8 @@ class PowerBar extends StatelessWidget {
               PowerBarSegment(
                 alignment: Alignment.centerLeft,
                 widthFactor: ((power / outMaxPower)).clamp(0, 1),
-                color: outColor,
-                notches: (outMaxPower ~/ 10) + 1
+                color: outColor
               ),
-              
-              /*
-              SizedBox(
-                width: 28,
-                child: Text(
-                  max(0, power).round().toString(),
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold
-                  )
-                )
-              )
-              */
             ],
           ),
         );
@@ -88,16 +59,12 @@ class PowerBarSegment extends StatelessWidget {
   final Alignment alignment;
   final double widthFactor;
   final Color color;
-  final int notches;
-  final bool hideFirstNotch;
   
   const PowerBarSegment({
     Key? key,
     required this.alignment,
     required this.widthFactor,
-    required this.color,
-    this.notches = 0,
-    this.hideFirstNotch = false
+    required this.color
   }) : super(key: key);
 
   @override
@@ -105,25 +72,13 @@ class PowerBarSegment extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Expanded(
-      child: Stack(
+      child: FractionallySizedBox(
         alignment: alignment,
-        children: [
-          FractionallySizedBox(
-            widthFactor: widthFactor,
-            child: Container(
-              color: color,
-              height: 5
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(notches, (i) => Container(
-              height: 8,
-              width: 2,
-              color: (i == 0 && hideFirstNotch) ? null : theme.hintColor
-            )),
-          ),
-        ],
+        widthFactor: widthFactor,
+        child: Container(
+          color: color,
+          height: 7
+        ),
       ),
     );
   }
