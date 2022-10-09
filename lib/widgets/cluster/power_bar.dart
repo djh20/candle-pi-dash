@@ -40,8 +40,6 @@ class PowerBar extends StatelessWidget {
                 color: inColor
               ),
 
-              const SizedBox(width: 1),
-
               PowerBarSegment(
                 alignment: Alignment.centerLeft,
                 widthFactor: ((power / outMaxPower)).clamp(0, 1),
