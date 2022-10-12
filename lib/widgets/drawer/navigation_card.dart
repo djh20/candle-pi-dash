@@ -47,7 +47,7 @@ class _NavigationCardMapState extends State<NavigationCardMap>
   @override
   void initState() {
     animController = AnimationController(
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(seconds: 4),
       vsync: this
     );
     super.initState();
@@ -89,13 +89,20 @@ class _NavigationCardMapState extends State<NavigationCardMap>
               ),
             ],
           ),
+          Center(
+            child: Icon(
+              Icons.navigation,
+              color: Colors.black.withOpacity(0.5),
+              size: 34
+            )
+          ),
           const Center(
             child: Icon(
               Icons.navigation,
               color: Colors.black,
-              size: 30
+              size: 22
             )
-          )
+          ),
         ]
       )
     );
