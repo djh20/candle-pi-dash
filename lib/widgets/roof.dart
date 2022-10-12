@@ -16,7 +16,6 @@ class Roof extends StatelessWidget {
         'cc_fan_speed',
         'eco',
         'drawer',
-        'powered',
         'gear'
       ],
       builder: (context, model, properties) {
@@ -24,7 +23,7 @@ class Roof extends StatelessWidget {
         final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
-        final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
         final bool parked = (gear <= 1);
 
@@ -35,7 +34,7 @@ class Roof extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AnimatedPadding(
-                padding: EdgeInsets.only(top: parked ? 0 : 16),
+                padding: EdgeInsets.only(top: parked ? 0 : 13),
                 duration: const Duration(milliseconds: 500),
                 curve: Curves.fastOutSlowIn,
                 child: Column(
@@ -65,7 +64,7 @@ class Roof extends StatelessWidget {
               ),
               
               AnimatedPadding(
-                padding: EdgeInsets.only(top: !drawerOpen ? 16 : 0),
+                padding: EdgeInsets.only(top: !drawerOpen ? 13 : 0),
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.fastOutSlowIn,
                 child: AnimatedScale(

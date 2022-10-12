@@ -41,7 +41,7 @@ class Speedometer extends StatelessWidget {
               fontSize: !drawerOpen ? 180 : 155
             ),
             child: AnimatedPadding(
-              padding: EdgeInsets.only(top: powerBarVisible ? 16 : 0),
+              padding: EdgeInsets.only(top: powerBarVisible ? 13 : 0),
               duration: const Duration(milliseconds: 500),
               curve: Curves.fastOutSlowIn,
               child: Column(
