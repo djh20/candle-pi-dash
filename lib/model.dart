@@ -1,9 +1,9 @@
-
 import 'dart:convert';
 import 'dart:math';
 
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/themes.dart';
+import 'package:candle_dash/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -86,9 +86,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   late Tween<double> mapRotTween;
   LatLng mapPosition = LatLng(0, 0);
   double mapRotation = 0;
-
-  List<Street> streets = [];
-
+  
   AppModel() {
     vehicle = Vehicle(this);
   }
@@ -101,20 +99,6 @@ class AppModel extends PropertyChangeNotifier<String> {
       _light.lightSensorStream.listen(onLightData);
     } on LightException catch (exception) {
       debugPrint(exception.toString());
-    }
-
-    final String rawStreetData = 
-      await rootBundle.loadString('assets/map/streets.geojson');
-    
-    final streetData = await jsonDecode(rawStreetData);
-    final features = streetData['features'];
-
-    for (var feature in features) {
-      // If the feature is a street, add it to the list of streets.
-      if (feature['geometry']['type'] == 'LineString') {
-        final street = Street.fromFeature(feature);
-        streets.add(street);
-      }
     }
   }
 
@@ -210,16 +194,18 @@ class AppModel extends PropertyChangeNotifier<String> {
     );
   }
 
-  void updateMap(LatLng newPosition, double newRotation) {
+  void updateMap(LatLng newPosition, double newRotation) async {
     /// Only update map position if the drawer is open and on the correct
     /// page. This stops the issue where the controller errors because the
     /// map widget doesn't exist.
-    if (drawerOpen && vPage == 0) {
+    final bool gpsLocked = vehicle.getMetricBool("gps_locked");
+
+    if (drawerOpen && gpsLocked && vPage == 0) {
       mapLatTween = Tween<double>(
         begin: mapPosition.latitude, end: newPosition.latitude
       );
       mapLngTween = Tween<double>(
-          begin: mapPosition.longitude, end: newPosition.longitude
+        begin: mapPosition.longitude, end: newPosition.longitude
       );
 
       /// This logic is a bit weird, but it's to prevent the map from doing a
@@ -254,7 +240,7 @@ class AppModel extends PropertyChangeNotifier<String> {
       mapAnimController.forward();
     }
 
-    final speedLimit = getSpeedLimit(newPosition, vehicle.speedLimit);
+    final speedLimit = await getSpeedLimit(newPosition, vehicle.speedLimit);
 
     if (speedLimit != null) {
       vehicle.lastSpeedLimit = speedLimit;
@@ -268,34 +254,62 @@ class AppModel extends PropertyChangeNotifier<String> {
     mapRotation = newRotation;
   }
 
-  int? getSpeedLimit(LatLng position, int? currentSpeedLimit) {
+  Future<int?> getSpeedLimit(LatLng position, int? currentSpeedLimit) async {
     const R = Constants.earthRadius;
 
-    final latRad = position.latitudeInRad;
+    final latRad = position.latitudeInRad;  
     final lngRad = position.longitudeInRad;
 
     final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
 
-    final int gap = vehicleSpeed ~/ 1.5;
+    final int gap = vehicleSpeed.round() * 2;
     final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
 
     //debugPrint("$offsets");
 
-    final List<StreetPoint> points = []; 
+    //final List<StreetPoint> points = []; 
+    final List<Way> ways = [];
     final List<int> speedLimits = [];
 
-    // Get all the points that are within 500m of the main position.
-    for (var street in streets) {
-      for (var pointPos in street.pointPositions) {
-        final distance = getDistance(position, pointPos);
+    const int maxTileDistance = 1; // Total: 9 tiles.
+    
+    final originTilePos = 
+      worldToTile(position.latitude, position.longitude, Constants.mapZoom.toDouble());
 
-        if (distance <= 500) {
-          points.add( StreetPoint(pointPos, street) );
+    for (int xOffset = -maxTileDistance; xOffset <= maxTileDistance; xOffset++) {
+      for (int yOffset = -maxTileDistance; yOffset <= maxTileDistance; yOffset++) {
+        final tilePos = Point<int>(
+          originTilePos.x + xOffset, 
+          originTilePos.y + yOffset
+        );
+
+        final String tileWaysFileName = 
+          "${Constants.mapZoom}-${tilePos.x}-${tilePos.y}.json";
+
+        debugPrint(tileWaysFileName);
+
+        String? tileWaysData;
+
+        try {
+          tileWaysData = 
+            await rootBundle.loadString("assets/generated/map/$tileWaysFileName");
+
+        } catch (err) {
+          debugPrint(err.toString());
         }
+
+        if (tileWaysData == null) continue;
+
+        final List<dynamic> tileWaysJson = await jsonDecode(tileWaysData);
+        final List<Way> tileWays = tileWaysJson.map((e) => Way.fromJson(e)).toList();
+
+        ways.addAll(tileWays);
       }
     }
 
-    // Get the closest point for each offset.
+    debugPrint(ways.length.toString());
+
+    // Get the closest way for each offset.
     for (var offset in offsets) {
       final offsetLatRad = asin( 
         sin(latRad) * cos(offset/R) + 
@@ -313,45 +327,48 @@ class AppModel extends PropertyChangeNotifier<String> {
         offsetLngRad * (180/pi)
       );
 
-      StreetPoint? closestPoint;
-      double closestDistance = double.infinity;
+      Way? closestWay;
+      double closestWayDistance = 200;
       
-      for (var point in points) {
-        final distance = getDistance(offsetPos, point.position);
+      for (var way in ways) {
+        for (var pos in way.geometry) {
+          final distance = getDistance(offsetPos, pos);
 
-        //debugPrint("${point.street.name}: $distance");
-
-        if (distance < closestDistance) {
-          closestPoint = point;
-          closestDistance = distance;
+          if (distance < closestWayDistance) {
+            closestWay = way;
+            closestWayDistance = distance;
+          }
         }
       }
 
-      if (closestPoint != null && closestPoint.street.speedLimit != null) {
-        //debugPrint('$offset: ${closestPoint.street.name} (${closestPoint.street.speedLimit}) $offsetPos');
-        speedLimits.add(closestPoint.street.speedLimit ?? 0);
+      if (closestWay != null) { // && closestPoint.street.speedLimit != null
+        final String wayName = closestWay.tags["name"] ?? "";
+        final int speedLimit = int.parse(closestWay.tags["maxspeed"]!);
+        debugPrint('$offset: $speedLimit ($wayName) $offsetPos');
+        speedLimits.add(speedLimit);
       }
     }
+    
 
     //speedLimits.clear();
-    //debugPrint(speedLimits.toString());
+    debugPrint(speedLimits.toString());
 
     if (speedLimits.isNotEmpty) {
       // We need to have at least two speed limits to be confident enough.
       if (speedLimits.length >= 2) {
         final consensus = speedLimits.every((v) => v == speedLimits[0]);
 
-        final speedDiff = vehicleSpeed - speedLimits[0];
-
-        // Assume the speed limit is invalid if the vehicle is travelling significantly
-        // faster than it. The purpose of this is to reduce the amount of incorrect speed 
-        // limit detections, as someone will likely not be travelling 30 km/h faster than
-        // the actual speed limit.
-        if (speedDiff >= 30) return null;
-
         // Only update the speed limit if the offset speed limits are the same.
         // Otherwise, return the current speed limit so it doesn't change.
         if (consensus) {
+          final speedDiff = vehicleSpeed - speedLimits[0];
+
+          // Assume the speed limit is invalid if the vehicle is travelling significantly
+          // faster than it. The purpose of this is to reduce the amount of incorrect speed 
+          // limit detections, as someone will likely not be travelling 30 km/h faster than
+          // the actual speed limit.
+          if (speedDiff >= 30) return null;
+
           return speedLimits[0];
         }
       }
@@ -449,37 +466,33 @@ class AppModel extends PropertyChangeNotifier<String> {
   void notify(String? property) => notifyListeners(property);
 }
 
-class Street {
-  final String? name;
-  final int? speedLimit;
-  final List<LatLng> pointPositions;
 
-  Street(this.name, this.pointPositions, this.speedLimit);
+class Way {
+  final List<LatLng> geometry;
+  final Map<String, String?> tags;
 
-  factory Street.fromFeature(Map<String, dynamic> feature) {
-    final List<LatLng> points = [];
-    final List<dynamic> coordinates = feature['geometry']['coordinates'];
-    final String? maxSpeed = feature['properties']['maxspeed'];
-    
-    for (var point in coordinates) {
-      // Coordinates are the other way around.
-      points.add(LatLng(point[1], point[0]));
-    }
+  Way(this.geometry, this.tags);
 
-    return Street(
-      feature['properties']['name'],
-      points,
-      maxSpeed != null ? int.parse(maxSpeed) : null
-    );
+  factory Way.fromJson(dynamic parsedJson) {
+    //final int id = parsedJson["id"];
+    final tags = Map<String, String?>.from(parsedJson["tags"]);
+
+    final List<dynamic> rawGeometry = parsedJson["geometry"];
+    final List<LatLng> geometry = 
+      rawGeometry.map((e) => LatLng(e["lat"], e["lon"])).toList();
+
+    return Way(geometry, tags);
   }
 }
 
+/*
 class StreetPoint {
   final LatLng position;
   final Street street;
 
   StreetPoint(this.position, this.street);
 }
+*/
 
 class Alert {
   final String id;

@@ -6,14 +6,40 @@ import 'package:flutter_map/flutter_map.dart';
 //import 'package:latlong2/latlong.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
-class NavigationCardContent extends StatefulWidget {
-  const NavigationCardContent({ Key? key }) : super(key: key);
+class NavigationCardContent extends StatelessWidget {
+  const NavigationCardContent({Key? key}) : super(key: key);
 
   @override
-  State<NavigationCardContent> createState() => _NavigationCardContentState();
+  Widget build(BuildContext context) {
+    return PropertyChangeConsumer<AppModel, String>(
+      properties: const ["gps_locked"],
+      builder: (context, model, properties) {
+        final bool gpsLocked = model?.vehicle.getMetricBool("gps_locked") ?? false;
+
+        return gpsLocked ? 
+        const NavigationCardMap() : 
+        const SizedBox(
+          height: Constants.cardContentHeight,
+          child: Center(
+            child: Text(
+              "Location unavailable",
+              style: TextStyle(fontSize: 18)
+            )
+          )
+        );
+      }
+    );
+  }
 }
 
-class _NavigationCardContentState extends State<NavigationCardContent> 
+class NavigationCardMap extends StatefulWidget {
+  const NavigationCardMap({ Key? key }) : super(key: key);
+
+  @override
+  State<NavigationCardMap> createState() => _NavigationCardMapState();
+}
+
+class _NavigationCardMapState extends State<NavigationCardMap> 
   with TickerProviderStateMixin {
 
   late AnimationController animController;
@@ -52,21 +78,15 @@ class _NavigationCardContentState extends State<NavigationCardContent>
             options: MapOptions(
               center: model?.mapPosition,
               rotation: model?.mapRotation ?? 0.0,
-              zoom: 15.0,
+              zoom: Constants.mapZoom.toDouble(),
               allowPanningOnScrollingParent: false,
               interactiveFlags: InteractiveFlag.none
             ),
             layers: [
               TileLayerOptions(
                 tileProvider: const AssetTileProvider(),
-                urlTemplate: "assets/map/tiles/{z}-{x}-{y}.png"
+                urlTemplate: "assets/generated/map/{z}-{x}-{y}.png"
               ),
-              
-              /*TileLayerOptions(
-                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                subdomains: ['a', 'b', 'c']
-              )*/
-              
             ],
           ),
           const Center(
@@ -79,78 +99,5 @@ class _NavigationCardContentState extends State<NavigationCardContent>
         ]
       )
     );
-
-    /*
-
-    final images = [
-      'assets/map/16-64188-41570.png',
-      'assets/map/16-64189-41570.png',
-      'assets/map/16-64188-41571.png',
-      'assets/map/16-64189-41571.png',
-    ];
-
-    print('doing thing');
-    model?.tController.value = Matrix4(
-      1.5, 0.0, 0.0, 0.0,
-      0.0, 1.5, 0.0, 0.0,
-      0.0, 0.0, 1.5, 0.0,
-      0.0, -10.0, 0.0, 1.0,
-    );
-
-    print(model?.tController.value);
-
-    return Container(
-      height: 283,
-      color: Colors.red,
-      child: InteractiveViewer(
-        panEnabled: false,
-        scaleEnabled: false,
-        transformationController: model?.tController,
-        child: GridView.count(
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          children: images.map((path) {
-            return Image.asset(
-              path,
-              //fit: BoxFit.none,
-              //width: 500,
-            );
-          }).toList()
-        ),
-      )
-      //color: Colors.grey,
-      //child: FittedBox(
-        //fit: BoxFit.cover,
-        
-      //)
-      /*
-      child: OSMFlutter(
-        controller: model?.mapController ?? MapController(),
-        showZoomController: true,
-      )*/
-      /*
-      child: FlutterMap(
-        options: MapOptions(
-          zoom: 16.0,
-          center: LatLng(-43.469810, 172.610123),
-          //allowPanningOnScrollingParent: false,
-          //interactiveFlags: InteractiveFlag.none
-        ),
-        layers: [
-          /*
-          TileLayerOptions(
-            tileProvider: const AssetTileProvider(),
-            urlTemplate: "assets/map/{z}-{x}-{y}.png"
-          ),
-          */
-          TileLayerOptions(
-            urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            subdomains: ['a', 'b', 'c']
-          )
-        ]
-      )
-      */
-    );
-    */
   }
 }

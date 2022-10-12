@@ -13,4 +13,5 @@ class Constants {
   static const double cardContentHeight = 288.0;
 
   static const double earthRadius = 6371e3;
+  static const int mapZoom = 15;
 }
