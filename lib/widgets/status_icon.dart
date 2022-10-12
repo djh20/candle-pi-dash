@@ -25,7 +25,7 @@ class StatusIcon extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 22,
+            size: 28,
             color: color
           ),
           const SizedBox(width: 3),
@@ -37,7 +37,7 @@ class StatusIcon extends StatelessWidget {
                 activeText ?? "",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: 16,
                   color: color
                 )
               )
