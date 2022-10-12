@@ -286,8 +286,6 @@ class AppModel extends PropertyChangeNotifier<String> {
         final String tileWaysFileName = 
           "${Constants.mapZoom}-${tilePos.x}-${tilePos.y}.json";
 
-        debugPrint(tileWaysFileName);
-
         String? tileWaysData;
 
         try {
@@ -306,8 +304,6 @@ class AppModel extends PropertyChangeNotifier<String> {
         ways.addAll(tileWays);
       }
     }
-
-    debugPrint(ways.length.toString());
 
     // Get the closest way for each offset.
     for (var offset in offsets) {
