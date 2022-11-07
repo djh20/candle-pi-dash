@@ -262,10 +262,10 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
 
-    final int totalSamples = max(vehicleSpeed.round() ~/ 5, 1);
+    final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
     //const double initialPointOffset = 50;
     
-    const int gapBetweenSamples = 20;
+    const int gapBetweenSamples = 10;
 
     //final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
     //debugPrint("$offsets");
@@ -342,26 +342,28 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     //speedLimits.clear();
     debugPrint(speedLimits.toString());
-
+    
     if (speedLimits.isNotEmpty) {
-      // We need to have at least two speed limits to be confident enough.
-      if (speedLimits.length >= 2) {
-        final consensus = speedLimits.every((v) => v == speedLimits[0]);
+      final int furthestSpeedLimit = speedLimits.last;
 
-        // Only update the speed limit if the offset speed limits are the same.
-        // Otherwise, return the current speed limit so it doesn't change.
-        if (consensus) {
-          final speedDiff = vehicleSpeed - speedLimits[0];
+      final int occurrences = speedLimits.where(
+        (speedLimit) => speedLimit == furthestSpeedLimit
+      ).length;
 
-          // Assume the speed limit is invalid if the vehicle is travelling significantly
-          // faster than it. The purpose of this is to reduce the amount of incorrect speed 
-          // limit detections, as someone will likely not be travelling 30 km/h faster than
-          // the actual speed limit.
-          if (speedDiff >= 30) return null;
+      final int minOccurrences = (speedLimits.length / 2).round();
 
-          return speedLimits[0];
-        }
+      if (occurrences >= minOccurrences) {
+        final speedDiff = vehicleSpeed - speedLimits[0];
+
+        // Assume the speed limit is invalid if the vehicle is travelling significantly
+        // faster than it. The purpose of this is to reduce the amount of incorrect speed 
+        // limit detections, as someone will likely not be travelling 30 km/h faster than
+        // the actual speed limit.
+        if (speedDiff >= 30) return null;
+
+        return furthestSpeedLimit;
       }
+
       return currentSpeedLimit;
     }
  
@@ -369,7 +371,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
 
 
-  Way? getClosestWay(LatLng pos, List<Way> ways, {double maxDistance = 50}) {
+  Way? getClosestWay(LatLng pos, List<Way> ways, {double maxDistance = 80}) {
     Way? closestWay;
     double closestWayDistance = maxDistance;
     //LatLng? closestWayPos;
