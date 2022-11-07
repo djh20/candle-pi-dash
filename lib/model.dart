@@ -262,9 +262,12 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
 
-    final int gap = vehicleSpeed.round() * 2;
-    final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
+    final int totalSamples = max(vehicleSpeed.round() ~/ 5, 1);
+    //const double initialPointOffset = 50;
+    
+    const int gapBetweenSamples = 20;
 
+    //final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
     //debugPrint("$offsets");
 
     //final List<StreetPoint> points = []; 
@@ -306,45 +309,36 @@ class AppModel extends PropertyChangeNotifier<String> {
     }
 
     // Get the closest way for each offset.
-    for (var offset in offsets) {
-      final offsetLatRad = asin( 
+    for (var i = 0; i < totalSamples; i++) {
+      final offset = gapBetweenSamples * (i + 1);
+
+      final sampleLatRad = asin( 
         sin(latRad) * cos(offset/R) + 
         cos(latRad) * sin(offset/R)* cos(vehicle.bearingRad)
       );
 
-      final offsetLngRad = 
+      final sampleLngRad = 
         lngRad + atan2(
           sin(vehicle.bearingRad) * sin(offset/R)* cos(latRad), 
-          cos(offset/R) - sin(latRad)* sin(offsetLatRad)
+          cos(offset/R) - sin(latRad)* sin(sampleLatRad)
         );
 
-      final offsetPos = LatLng(
-        offsetLatRad * (180/pi),
-        offsetLngRad * (180/pi)
+      var samplePos = LatLng(
+        sampleLatRad * (180/pi),
+        sampleLngRad * (180/pi)
       );
-
-      Way? closestWay;
-      double closestWayDistance = 200;
       
-      for (var way in ways) {
-        for (var pos in way.geometry) {
-          final distance = getDistance(offsetPos, pos);
-
-          if (distance < closestWayDistance) {
-            closestWay = way;
-            closestWayDistance = distance;
-          }
-        }
-      }
+      Way? closestWay = getClosestWay(samplePos, ways);
 
       if (closestWay != null) { // && closestPoint.street.speedLimit != null
         final String wayName = closestWay.tags["name"] ?? "";
         final int speedLimit = int.parse(closestWay.tags["maxspeed"]!);
-        debugPrint('$offset: $speedLimit ($wayName) $offsetPos');
+        debugPrint('${offset}m: $samplePos ($speedLimit) ($wayName)');
         speedLimits.add(speedLimit);
+      } else {
+        debugPrint('${offset}m: $samplePos');
       }
     }
-    
 
     //speedLimits.clear();
     debugPrint(speedLimits.toString());
@@ -372,6 +366,26 @@ class AppModel extends PropertyChangeNotifier<String> {
     }
  
     return null;
+  }
+
+
+  Way? getClosestWay(LatLng pos, List<Way> ways, {double maxDistance = 50}) {
+    Way? closestWay;
+    double closestWayDistance = maxDistance;
+    //LatLng? closestWayPos;
+    
+    for (var way in ways) {
+      for (var nodePos in way.geometry) {
+        final distance = getDistance(pos, nodePos);
+
+        if (distance < closestWayDistance) {
+          closestWay = way;
+          closestWayDistance = distance;
+        }
+      }
+    }
+
+    return closestWay;
   }
 
   double getDistance(LatLng posA, LatLng posB) {
