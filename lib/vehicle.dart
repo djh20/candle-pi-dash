@@ -103,6 +103,7 @@ class Vehicle {
       /// This stops the map from moving and rotating when the vehicle is not
       /// moving.
       if (distanceM >= 5) {
+        /*
         final deltaLng = pointB.longitude - pointA.longitude;
       
         final x = cos(pointB.latitude) * sin(deltaLng);
@@ -113,8 +114,22 @@ class Vehicle {
         bearingRad = atan2(x, y);
         final bearing = bearingRad * (180 / pi);
         final angle = (360 - ((bearing + 360)) % 360);
+        */
+
+        final double teta1 = pointA.latitudeInRad;
+        final double teta2 = pointB.latitudeInRad;
+        final double delta2 = degToRadian(pointB.longitude - pointA.longitude);
         
-        model.updateMap(pointB, angle);
+        final double y = sin(delta2) * cos(teta2);
+        final double x = cos(teta1)*sin(teta2) - sin(teta1)*cos(teta2)*cos(delta2);
+
+        bearingRad = atan2(y, x);
+
+        double bearingDeg = radianToDeg(bearingRad);
+        bearingDeg = ( (bearingDeg + 360) % 360 ); 
+
+        debugPrint("$pointA -> $pointB = $bearingDeg");
+        model.updateMap(pointB, -bearingDeg);
       }
     }
    
