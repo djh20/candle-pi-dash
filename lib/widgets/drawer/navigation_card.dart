@@ -47,7 +47,7 @@ class _NavigationCardMapState extends State<NavigationCardMap>
   @override
   void initState() {
     animController = AnimationController(
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 1),
       vsync: this
     );
     super.initState();
