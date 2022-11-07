@@ -15,7 +15,7 @@ class DrawerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 40,
+      elevation: 20,
       margin: const EdgeInsets.only(
         right: 10,
         bottom: 4,
