@@ -76,7 +76,7 @@ class Roof extends StatelessWidget {
                   alignment: Alignment.topRight,
                   child: SpeedLimitSign(
                     visible: model?.vehicle.speedLimit != null && !parked && gpsLocked,
-                    speedLimit: model?.vehicle.lastSpeedLimit ?? 0
+                    speedLimit: model?.vehicle.lastValidSpeedLimit ?? 0
                   ),
                 )
               )

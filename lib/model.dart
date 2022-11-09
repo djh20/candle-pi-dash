@@ -86,6 +86,8 @@ class AppModel extends PropertyChangeNotifier<String> {
   late Tween<double> mapRotTween;
   LatLng mapPosition = LatLng(0, 0);
   double mapRotation = 0;
+
+  int? _lastSpeedLimitDetectionTime;
   
   AppModel() {
     vehicle = Vehicle(this);
@@ -200,6 +202,27 @@ class AppModel extends PropertyChangeNotifier<String> {
     /// map widget doesn't exist.
     final bool gpsLocked = vehicle.getMetricBool("gps_locked");
 
+    /// This logic is a bit weird, but it's to prevent the map from doing a
+    /// large rotation when not necessary. For example:
+    /// 
+    /// If the map is rotating from 20 to 320 degrees, instead of doing a
+    /// 300 degree rotation from 20 to 230, it will do a 50 degree rotation
+    /// from 20 to -30. This stops the map from flipping back and forth when
+    /// the rotation crosses over 360 degrees.
+    
+
+    newRotation = -newRotation;
+    
+    final normalMag = (newRotation - mapRotation).abs();
+    final crossPositiveMag = (360 + newRotation) - mapRotation;
+    final crossNegativeMag = mapRotation + (360 - newRotation);
+
+    if (crossPositiveMag < normalMag) {
+      newRotation = 360 + newRotation;
+    } else if (crossNegativeMag < normalMag) {
+      newRotation = -crossNegativeMag;
+    }
+
     if (drawerOpen && gpsLocked && vPage == 0) {
       mapLatTween = Tween<double>(
         begin: mapPosition.latitude, end: newPosition.latitude
@@ -208,28 +231,8 @@ class AppModel extends PropertyChangeNotifier<String> {
         begin: mapPosition.longitude, end: newPosition.longitude
       );
 
-      /// This logic is a bit weird, but it's to prevent the map from doing a
-      /// large rotation when not necessary. For example:
-      /// 
-      /// If the map is rotating from 20 to 320 degrees, instead of doing a
-      /// 300 degree rotation from 20 to 230, it will do a 50 degree rotation
-      /// from 20 to -30. This stops the map from flipping back and forth when
-      /// the rotation crosses over 360 degrees.
-      
-      final normalMag = (newRotation - mapRotation).abs();
-      final crossPositiveMag = (360 + newRotation) - mapRotation;
-      final crossNegativeMag = mapRotation + (360 - newRotation);
-
-      var tweenRotation = newRotation;
-
-      if (crossPositiveMag < normalMag) {
-        tweenRotation = 360 + newRotation;
-      } else if (crossNegativeMag < normalMag) {
-        tweenRotation = -crossNegativeMag;
-      }
-
       mapRotTween = Tween<double>(
-          begin: mapRotation, end: tweenRotation
+          begin: mapRotation, end: newRotation
       );
 
       //print('$mapRotation -> $newRotation ($tweenRotation)');
@@ -243,7 +246,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     final speedLimit = await getSpeedLimit(newPosition, vehicle.speedLimit);
 
     if (speedLimit != null) {
-      vehicle.lastSpeedLimit = speedLimit;
+      vehicle.lastValidSpeedLimit = speedLimit;
     }
     
     vehicle.speedLimit = speedLimit;
@@ -262,10 +265,10 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
 
-    final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
+    final int totalSamples = max(vehicleSpeed.round() ~/ 2.5, 1);
     //const double initialPointOffset = 50;
     
-    const int gapBetweenSamples = 10;
+    const int gapBetweenSamples = 5;
 
     //final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
     //debugPrint("$offsets");
@@ -346,14 +349,15 @@ class AppModel extends PropertyChangeNotifier<String> {
     if (speedLimits.isNotEmpty) {
       final int furthestSpeedLimit = speedLimits.last;
 
-      final int occurrences = speedLimits.where(
+      // Find the total occurences of the speed limit from the end of the array (in a row).
+      final int occurrences = speedLimits.reversed.takeWhile(
         (speedLimit) => speedLimit == furthestSpeedLimit
       ).length;
 
       final int minOccurrences = (speedLimits.length / 2).round();
 
       if (occurrences >= minOccurrences) {
-        final speedDiff = vehicleSpeed - speedLimits[0];
+        final speedDiff = vehicleSpeed - furthestSpeedLimit;
 
         // Assume the speed limit is invalid if the vehicle is travelling significantly
         // faster than it. The purpose of this is to reduce the amount of incorrect speed 
@@ -361,17 +365,25 @@ class AppModel extends PropertyChangeNotifier<String> {
         // the actual speed limit.
         if (speedDiff >= 30) return null;
 
+        _lastSpeedLimitDetectionTime = DateTime.now().millisecondsSinceEpoch;
         return furthestSpeedLimit;
       }
-
-      return currentSpeedLimit;
     }
- 
-    return null;
+
+    if (currentSpeedLimit != null && _lastSpeedLimitDetectionTime != null) {
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      final int timeSinceLastDetection = now - _lastSpeedLimitDetectionTime!;
+
+      if (timeSinceLastDetection >= (Constants.speedLimitTimeout * 1000)) {
+        return null;
+      }
+    }
+    
+    return currentSpeedLimit;
   }
 
 
-  Way? getClosestWay(LatLng pos, List<Way> ways, {double maxDistance = 80}) {
+  Way? getClosestWay(LatLng pos, List<Way> ways, {double maxDistance = 40}) {
     Way? closestWay;
     double closestWayDistance = maxDistance;
     //LatLng? closestWayPos;

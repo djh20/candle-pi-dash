@@ -14,4 +14,6 @@ class Constants {
 
   static const double earthRadius = 6371e3;
   static const int mapZoom = 15;
+
+  static const int speedLimitTimeout = 10; // 10 seconds
 }

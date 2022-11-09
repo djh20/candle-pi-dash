@@ -27,9 +27,11 @@ class Vehicle {
 
   //Street? street;
   int? speedLimit;
-  int? lastSpeedLimit;
+  int? lastValidSpeedLimit;
 
+  LatLng position = LatLng(0, 0);
   double bearingRad = 0;
+  double bearingDeg = 0;
 
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
@@ -90,13 +92,13 @@ class Vehicle {
 
     } else if (id == 'gps_position' && data.length == 2) {
       const distance = Distance();
-      final pointA = model.mapPosition;
-      final pointB = LatLng(data[0] + .0, data[1] + .0);
+      final oldPos = position;
+      final newPos = LatLng(data[0] + .0, data[1] + .0);
       
       final double distanceM = distance.as(
         LengthUnit.Meter,
-        pointA,
-        pointB
+        oldPos,
+        newPos
       );
 
       /// Update the map only if the vehicle has moved at least 5m.
@@ -116,21 +118,23 @@ class Vehicle {
         final angle = (360 - ((bearing + 360)) % 360);
         */
 
-        final double teta1 = pointA.latitudeInRad;
-        final double teta2 = pointB.latitudeInRad;
-        final double delta2 = degToRadian(pointB.longitude - pointA.longitude);
+        final double teta1 = oldPos.latitudeInRad;
+        final double teta2 = newPos.latitudeInRad;
+        final double delta2 = degToRadian(newPos.longitude - oldPos.longitude);
         
         final double y = sin(delta2) * cos(teta2);
         final double x = cos(teta1)*sin(teta2) - sin(teta1)*cos(teta2)*cos(delta2);
 
         bearingRad = atan2(y, x);
 
-        double bearingDeg = radianToDeg(bearingRad);
+        bearingDeg = radianToDeg(bearingRad);
         bearingDeg = ( (bearingDeg + 360) % 360 ); 
 
-        debugPrint("$pointA -> $pointB = $bearingDeg");
-        model.updateMap(pointB, -bearingDeg);
+        debugPrint("$oldPos -> $newPos = $bearingDeg");
+        model.updateMap(newPos, bearingDeg);
       }
+
+      position = newPos;
     }
    
     model.notify(id);
