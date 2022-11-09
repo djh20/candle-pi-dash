@@ -23,6 +23,12 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   final List<Alert> alerts = [
     Alert(
+      id: "disclaimer", 
+      title: "Speeding alerts are enabled",
+      subtitle: "This feature is in beta and may not work correctly",
+      icon: Icons.info
+    ),
+    Alert(
       id: "cc_on", 
       title: "Range is reduced",
       subtitle: "Climate control is consuming power",
@@ -42,6 +48,14 @@ class AppModel extends PropertyChangeNotifier<String> {
       subtitle: "Switch to drive or reverse",
       icon: Icons.drive_eta,
       sound: "info.mp3"
+    ),
+    Alert(
+      id: "speeding",
+      title: "SLOW DOWN",
+      subtitle: "Exceeding detected speed limit",
+      icon: Icons.speed,
+      sound: "critical.mp3",
+      repeatable: true
     ),
   ];
 
@@ -88,6 +102,8 @@ class AppModel extends PropertyChangeNotifier<String> {
   double mapRotation = 0;
 
   int? _lastSpeedLimitDetectionTime;
+  int? speedingStartTime;
+  bool speedingAlertsEnabled = true;
   
   AppModel() {
     vehicle = Vehicle(this);
@@ -150,19 +166,24 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     // Return if the alert has already been shown.
     if (shownAlerts.contains(alert)) return;
-    shownAlerts.add(alert);
+
+    if (!alert.repeatable) shownAlerts.add(alert);
     
     messenger?.showSnackBar(
       SnackBar(
         padding: const EdgeInsets.all(12),
         margin: const EdgeInsets.only(
-          bottom: 45,
-          left: 120,
-          right: 120
+          bottom: 10,
+          left: 60,
+          right: 60
         ),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 7),
-        onVisible: () => audioPlayer.play(alert.sound),
+        onVisible: () {
+          if (alert.sound != null) {
+            audioPlayer.play(alert.sound!);
+          }
+        },
         content: Row(
           children: [
             Icon(
@@ -184,6 +205,7 @@ class AppModel extends PropertyChangeNotifier<String> {
                 ),
                 Text(
                   alert.subtitle,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18
                   ),
@@ -374,7 +396,7 @@ class AppModel extends PropertyChangeNotifier<String> {
       final int now = DateTime.now().millisecondsSinceEpoch;
       final int timeSinceLastDetection = now - _lastSpeedLimitDetectionTime!;
 
-      if (timeSinceLastDetection >= (Constants.speedLimitTimeout * 1000)) {
+      if (timeSinceLastDetection >= Constants.speedLimitTimeout) {
         return null;
       }
     }
@@ -523,13 +545,15 @@ class Alert {
   final IconData icon;
   final String title;
   final String subtitle;
-  final String sound;
+  final String? sound;
+  final bool repeatable;
   
   Alert({
     required this.id,
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.sound = 'alert.mp3'
+    this.sound,
+    this.repeatable = false
   });
 }

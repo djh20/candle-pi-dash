@@ -55,6 +55,7 @@ class Vehicle {
       if (data[0] == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
+        model.showAlert("disclaimer");
       } else {
         Wakelock.disable();
         pTracking.setTracking(false);
@@ -75,7 +76,30 @@ class Vehicle {
         model.vPage = 0;
       }
     } else if (id == 'wheel_speed') {
-      pTracking.update(data[0] / 1);
+      final double rearSpeed = data[0] / 1;
+      pTracking.update(rearSpeed);
+
+      final bool speeding = 
+        speedLimit != null && 
+        rearSpeed > (speedLimit! + Constants.speedingAlertThreshold);
+
+      if (speeding && model.speedingAlertsEnabled) {
+        final int now = DateTime.now().millisecondsSinceEpoch;
+
+        if (model.speedingStartTime != null) {
+          final int timeSinceStartedSpeeding = now - model.speedingStartTime!;
+
+          if (timeSinceStartedSpeeding >= Constants.speedingAlertTime) {
+            model.showAlert("speeding");
+            model.speedingStartTime = null;
+          }
+
+        } else {
+          model.speedingStartTime = now;
+        }
+      } else {
+        model.speedingStartTime = null;
+      }
 
     } else if (id == 'gear') {
       if (data[0] == 3) {

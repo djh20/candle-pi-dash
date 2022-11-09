@@ -47,6 +47,13 @@ class SettingsCardContent extends StatelessWidget {
                 model?.vehicle.reconnect();
               },
             ),
+            ElevatedButton(
+              child: const Text("DISABLE SPEEDING ALERTS"),
+              style: buttonStyle,
+              onPressed: model?.speedingAlertsEnabled == true ? 
+                () => model?.speedingAlertsEnabled = false 
+                : null
+            ),
             const SizedBox(height: 5),
             Text("v${model?.packageInfo.version ?? ""}")
           ],
