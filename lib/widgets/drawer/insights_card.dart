@@ -1,31 +1,12 @@
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/utils.dart';
 import 'package:candle_dash/widgets/typography/unit_text.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
 class InsightsCardContent extends StatelessWidget {
   const InsightsCardContent({ Key? key }) : super(key: key);
-
-  Color getLerpedColor(double t, {
-      Color a = Colors.green,
-      Color b = Colors.red
-  }) {
-    final HSVColor hsvColor = HSVColor.lerp(
-      HSVColor.fromColor(a), 
-      HSVColor.fromColor(b), 
-      t
-    ) ?? HSVColor.fromColor(a);
-
-    return hsvColor.toColor();
-  }
-
-  double map(double value, double min, double max) {
-    double diff = max-min;
-
-    double alpha = ((value-min)/diff).clamp(0.0, 1.0);
-    return alpha;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +41,9 @@ class InsightsCardContent extends StatelessWidget {
         final double leftWheelsValue = (-turnBias).clamp(0.0, 1.0);
         final double rightWheelsValue = (turnBias).clamp(0.0, 1.0);
 
-        final double inverterValue = map(inverterTemp, 23.0, 32.0);
-        final double batteryValue = map(batteryTemp, 23.0, 32.0);
-        final double motorValue = map(motorTemp, 23.0, 32.0);
+        final double inverterValue = mapToAlpha(inverterTemp, 23.0, 32.0);
+        final double batteryValue = mapToAlpha(batteryTemp, 23.0, 32.0);
+        final double motorValue = mapToAlpha(motorTemp, 23.0, 32.0);
 
         return SizedBox(
           height: Constants.cardContentHeight,
@@ -77,27 +58,27 @@ class InsightsCardContent extends StatelessWidget {
               ),
               Image.asset(
                 "assets/insights/inverter.png",
-                color: getLerpedColor(inverterValue),
+                color: lerpColor(inverterValue),
                 colorBlendMode: BlendMode.modulate,
               ),
               Image.asset(
                 "assets/insights/battery.png",
-                color: getLerpedColor(batteryValue),
+                color: lerpColor(batteryValue),
                 colorBlendMode: BlendMode.modulate,
               ),
               Image.asset(
                 "assets/insights/motor.png",
-                color: getLerpedColor(motorValue),
+                color: lerpColor(motorValue),
                 colorBlendMode: BlendMode.modulate,
               ),
               Image.asset(
                 "assets/insights/left-wheels.png",
-                color: getLerpedColor(leftWheelsValue),
+                color: lerpColor(leftWheelsValue),
                 colorBlendMode: BlendMode.modulate,
               ),
               Image.asset(
                 "assets/insights/right-wheels.png",
-                color: getLerpedColor(rightWheelsValue),
+                color: lerpColor(rightWheelsValue),
                 colorBlendMode: BlendMode.modulate,
               ),
               Column(
