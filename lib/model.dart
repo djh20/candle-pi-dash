@@ -23,10 +23,10 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   final List<Alert> alerts = [
     Alert(
-      id: "disclaimer", 
-      title: "Speeding alerts are enabled",
-      subtitle: "This feature is in beta and may not work correctly",
-      icon: Icons.info
+      id: "speeding_alerts_disclaimer", 
+      title: "Speeding alerts active",
+      subtitle: "This feature is in beta",
+      icon: Icons.report
     ),
     Alert(
       id: "cc_on", 
@@ -38,23 +38,26 @@ class AppModel extends PropertyChangeNotifier<String> {
     Alert(
       id: "low_range", 
       title: "Low range",
-      subtitle: "Vehicle range is at 10km",
+      subtitle: "10km remaining",
       icon: Icons.battery_alert,
-      sound: "critical.mp3"
+      sound: "critical.mp3",
+      duration: const Duration(seconds: 10)
     ),
     Alert(
       id: "neutral", 
       title: "Vehicle is in neutral",
       subtitle: "Switch to drive or reverse",
       icon: Icons.drive_eta,
-      sound: "info.mp3"
+      sound: "info.mp3",
+      duration: const Duration(seconds: 4),
     ),
     Alert(
       id: "speeding",
-      title: "SLOW DOWN",
+      title: "Slow down!",
       subtitle: "Exceeding detected speed limit",
       icon: Icons.speed,
       sound: "critical.mp3",
+      duration: const Duration(seconds: 5),
       repeatable: true
     ),
   ];
@@ -171,47 +174,43 @@ class AppModel extends PropertyChangeNotifier<String> {
     
     messenger?.showSnackBar(
       SnackBar(
-        padding: const EdgeInsets.all(12),
-        margin: const EdgeInsets.only(
-          bottom: 10,
-          left: 60,
-          right: 60
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 7),
+        padding: const EdgeInsets.all(10),
+        /*shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(100)
+          )
+        ),*/
+        //margin: const EdgeInsets.all(8),
+        behavior: SnackBarBehavior.fixed,
+        duration: alert.duration,
         onVisible: () {
           if (alert.sound != null) {
             audioPlayer.play(alert.sound!);
           }
         },
         content: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               alert.icon,
-              size: 40,
+              size: 34,
               color: theme.scaffoldBackgroundColor
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  alert.title,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold
-                  )
-                ),
-                Text(
-                  alert.subtitle,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18
-                  ),
-                ),
-              ],
-            )
+            const SizedBox(width: 6),
+            Text(
+              alert.title,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold
+              )
+            ),
+            const SizedBox(width: 20),
+            Text(
+              alert.subtitle,
+              style: const TextStyle(
+                fontSize: 18,
+              ),
+            ),
           ],
         )
       )
@@ -547,6 +546,7 @@ class Alert {
   final String subtitle;
   final String? sound;
   final bool repeatable;
+  final Duration duration;
   
   Alert({
     required this.id,
@@ -554,6 +554,7 @@ class Alert {
     required this.title,
     required this.subtitle,
     this.sound,
-    this.repeatable = false
+    this.repeatable = false,
+    this.duration = const Duration(seconds: 7)
   });
 }
