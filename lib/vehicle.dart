@@ -55,7 +55,11 @@ class Vehicle {
       if (data[0] == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
-        model.showAlert("disclaimer");
+
+        if (model.speedingAlertsEnabled) {
+          model.showAlert("speeding_alerts_disclaimer");
+        }
+
       } else {
         Wakelock.disable();
         pTracking.setTracking(false);
@@ -105,7 +109,7 @@ class Vehicle {
       if (data[0] == 3) {
         model.showAlert("neutral");
       } else {
-        model.messenger?.clearSnackBars();
+        //model.messenger?.clearSnackBars();
       }
       
     } else if (id == 'cc_fan_speed' && data[0] > 0) {
