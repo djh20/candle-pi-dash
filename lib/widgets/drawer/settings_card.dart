@@ -47,13 +47,21 @@ class SettingsCardContent extends StatelessWidget {
                 model?.vehicle.reconnect();
               },
             ),
-            ElevatedButton(
-              child: const Text("DISABLE SPEEDING ALERTS"),
-              style: buttonStyle,
-              onPressed: model?.speedingAlertsEnabled == true ? 
-                () => model?.speedingAlertsEnabled = false 
-                : null
-            ),
+
+            model?.speedingAlertsEnabled == false ? 
+              ElevatedButton(
+                child: const Text("ENABLE SPEEDING ALERTS"),
+                style: buttonStyle,
+                onPressed: () => model?.speedingAlertsEnabled = true 
+              ) :
+              ElevatedButton(
+                child: const Text("DISABLE SPEEDING ALERTS"),
+                style: buttonStyle.copyWith(
+                  backgroundColor: MaterialStateProperty.all<Color>(Colors.red)
+                ),
+                onPressed: () => model?.speedingAlertsEnabled = false 
+              ),
+
             const SizedBox(height: 5),
             Text("v${model?.packageInfo.version ?? ""}")
           ],
