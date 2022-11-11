@@ -27,3 +27,8 @@ double mapToAlpha(double value, double min, double max) {
   double alpha = ((value-min)/diff).clamp(0.0, 1.0);
   return alpha;
 }
+
+int getTimeElapsed(int time) {
+  final int now = DateTime.now().millisecondsSinceEpoch;
+  return (now - time);
+}

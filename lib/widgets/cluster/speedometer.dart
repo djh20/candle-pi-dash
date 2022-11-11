@@ -33,7 +33,12 @@ class Speedometer extends StatelessWidget {
           (theme.textTheme.bodyText1?.color ?? Colors.black) 
           : theme.hintColor;
 
-        if (speedLimit != null && model?.speedingAlertsEnabled == true) {
+        if (
+          speedLimit != null &&
+          model?.speedingAlertsEnabled == true &&
+          model?.lastSpeedLimitChangeTime != null &&
+          getTimeElapsed(model!.lastSpeedLimitChangeTime!) >= 5000
+        ) {
           /*
           if (speed > speedLimit + Constants.speedingAlertThreshold) {
             speedColor = Colors.red;

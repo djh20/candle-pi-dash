@@ -104,7 +104,9 @@ class AppModel extends PropertyChangeNotifier<String> {
   LatLng mapPosition = LatLng(0, 0);
   double mapRotation = 0;
 
-  int? _lastSpeedLimitDetectionTime;
+  int? lastSpeedLimitDetectionTime;
+  int? lastSpeedLimitChangeTime;
+
   int? speedingStartTime;
   bool speedingAlertsEnabled = true;
   
@@ -386,14 +388,20 @@ class AppModel extends PropertyChangeNotifier<String> {
         // the actual speed limit.
         if (speedDiff >= 30) return null;
 
-        _lastSpeedLimitDetectionTime = DateTime.now().millisecondsSinceEpoch;
+        final int now = DateTime.now().millisecondsSinceEpoch;
+        lastSpeedLimitDetectionTime = now;
+
+        // Set lastSpeedLimitChangeTime if the speed limit has changed
+        if (furthestSpeedLimit != currentSpeedLimit) {
+          lastSpeedLimitChangeTime = now;
+        }
+
         return furthestSpeedLimit;
       }
     }
 
-    if (currentSpeedLimit != null && _lastSpeedLimitDetectionTime != null) {
-      final int now = DateTime.now().millisecondsSinceEpoch;
-      final int timeSinceLastDetection = now - _lastSpeedLimitDetectionTime!;
+    if (currentSpeedLimit != null && lastSpeedLimitDetectionTime != null) {
+      final int timeSinceLastDetection = getTimeElapsed(lastSpeedLimitDetectionTime!);
 
       if (timeSinceLastDetection >= Constants.speedLimitTimeout) {
         return null;
