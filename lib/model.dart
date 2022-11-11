@@ -44,14 +44,6 @@ class AppModel extends PropertyChangeNotifier<String> {
       duration: const Duration(seconds: 10)
     ),
     Alert(
-      id: "neutral", 
-      title: "Vehicle is in neutral",
-      subtitle: "Switch to drive or reverse",
-      icon: Icons.drive_eta,
-      sound: "info.mp3",
-      duration: const Duration(seconds: 4),
-    ),
-    Alert(
       id: "speeding",
       title: "Slow down!",
       subtitle: "Exceeding detected speed limit",

@@ -104,13 +104,6 @@ class Vehicle {
       } else {
         model.speedingStartTime = null;
       }
-
-    } else if (id == 'gear') {
-      if (data[0] == 3) {
-        model.showAlert("neutral");
-      } else {
-        //model.messenger?.clearSnackBars();
-      }
       
     } else if (id == 'cc_fan_speed' && data[0] > 0) {
       model.showAlert("cc_on");
