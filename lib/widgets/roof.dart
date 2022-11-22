@@ -73,8 +73,11 @@ class Roof extends StatelessWidget {
                   curve: Curves.fastOutSlowIn,
                   alignment: Alignment.topRight,
                   child: SpeedLimitSign(
-                    visible: model?.vehicle.speedLimit != null && !parked,
-                    speedLimit: model?.vehicle.lastValidSpeedLimit ?? 0
+                    visible: 
+                      model?.vehicle.displayedSpeedLimit != null && 
+                      (model?.vehicle.displayedSpeedLimitAge ?? 0) <= 3 &&
+                      !parked,
+                    speedLimit: model?.vehicle.displayedSpeedLimit ?? 0
                   ),
                 )
               )

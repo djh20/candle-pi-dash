@@ -28,7 +28,8 @@ class Vehicle {
 
   //Street? street;
   int? speedLimit;
-  int? lastValidSpeedLimit;
+  int? displayedSpeedLimit;
+  int displayedSpeedLimitAge = 0;
 
   LatLng position = LatLng(0, 0);
   double bearingRad = 0;
@@ -142,6 +143,7 @@ class Vehicle {
 
     } else if (id == 'gps_locked' && data[0] == 0) {
       speedLimit = null;
+      displayedSpeedLimit = null;
       model.notify("speedLimit");
     }
    

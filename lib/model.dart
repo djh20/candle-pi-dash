@@ -96,8 +96,8 @@ class AppModel extends PropertyChangeNotifier<String> {
   LatLng mapPosition = LatLng(0, 0);
   double mapRotation = 0;
 
-  int? lastSpeedLimitDetectionTime;
   int? lastSpeedLimitChangeTime;
+  int noSpeedLimitCounter = 0;
 
   int? speedingStartTime;
   bool speedingAlertsEnabled = false;
@@ -256,10 +256,22 @@ class AppModel extends PropertyChangeNotifier<String> {
       mapAnimController.forward();
     }
 
+    final oldSpeedLimit = vehicle.speedLimit;
     final speedLimit = await getSpeedLimit(newPosition, vehicle.speedLimit);
+    //vehicle.isSpeedLimitValid = (speedLimit != null);
+
+    final int now = DateTime.now().millisecondsSinceEpoch;
+
+    // Set lastSpeedLimitChangeTime if the speed limit has changed
+    if (speedLimit != oldSpeedLimit) {
+      lastSpeedLimitChangeTime = now;
+    }
 
     if (speedLimit != null) {
-      vehicle.lastValidSpeedLimit = speedLimit;
+      vehicle.displayedSpeedLimit = speedLimit;
+      vehicle.displayedSpeedLimitAge = 0;
+    } else {
+      vehicle.displayedSpeedLimitAge++;
     }
     
     vehicle.speedLimit = speedLimit;
@@ -399,28 +411,15 @@ class AppModel extends PropertyChangeNotifier<String> {
         // limit detections, as someone will likely not be travelling 30 km/h faster than
         // the actual speed limit.
         if (speedDiff >= 30) return null;
-
-        final int now = DateTime.now().millisecondsSinceEpoch;
-        lastSpeedLimitDetectionTime = now;
-
-        // Set lastSpeedLimitChangeTime if the speed limit has changed
-        if (furthestSpeedLimit != currentSpeedLimit) {
-          lastSpeedLimitChangeTime = now;
-        }
-
+        
         return furthestSpeedLimit;
+
+      } else {
+        return currentSpeedLimit;
       }
     }
 
-    if (currentSpeedLimit != null && lastSpeedLimitDetectionTime != null) {
-      final int timeSinceLastDetection = getTimeElapsed(lastSpeedLimitDetectionTime!);
-
-      if (timeSinceLastDetection >= Constants.speedLimitTimeout) {
-        return null;
-      }
-    }
-
-    return currentSpeedLimit;
+    return null;
   }
 
 
