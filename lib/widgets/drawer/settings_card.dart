@@ -15,6 +15,7 @@ class SettingsCardContent extends StatelessWidget {
     );
 
     return PropertyChangeConsumer<AppModel, String>(
+      properties: const ['speedingAlertsEnabled'],
       builder: (context, model, properties) {
         return Column(
           children: [
@@ -52,14 +53,20 @@ class SettingsCardContent extends StatelessWidget {
               ElevatedButton(
                 child: const Text("ENABLE SPEEDING ALERTS"),
                 style: buttonStyle,
-                onPressed: () => model?.speedingAlertsEnabled = true 
+                onPressed: () {
+                  model?.speedingAlertsEnabled = true;
+                  model?.notify("speedingAlertsEnabled");
+                }
               ) :
               ElevatedButton(
                 child: const Text("DISABLE SPEEDING ALERTS"),
                 style: buttonStyle.copyWith(
                   backgroundColor: MaterialStateProperty.all<Color>(Colors.red)
                 ),
-                onPressed: () => model?.speedingAlertsEnabled = false 
+                onPressed: () {
+                  model?.speedingAlertsEnabled = false;
+                  model?.notify("speedingAlertsEnabled");
+                }
               ),
 
             const SizedBox(height: 5),
