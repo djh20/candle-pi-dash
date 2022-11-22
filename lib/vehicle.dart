@@ -156,6 +156,10 @@ class Vehicle {
       }
 
       position = newPos;
+
+    } else if (id == 'gps_locked' && data[0] == 0) {
+      speedLimit = null;
+      model.notify("speedLimit");
     }
    
     model.notify(id);

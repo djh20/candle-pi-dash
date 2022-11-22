@@ -16,14 +16,12 @@ class Roof extends StatelessWidget {
         'cc_fan_speed',
         'eco',
         'drawer',
-        'gear',
-        'gps_locked'
+        'gear'
       ],
       builder: (context, model, properties) {
         final connected = model?.vehicle.connected ?? false;
         final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
-        final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
         //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
@@ -75,7 +73,7 @@ class Roof extends StatelessWidget {
                   curve: Curves.fastOutSlowIn,
                   alignment: Alignment.topRight,
                   child: SpeedLimitSign(
-                    visible: model?.vehicle.speedLimit != null && !parked && gpsLocked,
+                    visible: model?.vehicle.speedLimit != null && !parked,
                     speedLimit: model?.vehicle.lastValidSpeedLimit ?? 0
                   ),
                 )
