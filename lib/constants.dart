@@ -18,5 +18,5 @@ class Constants {
   static const int speedLimitTimeout = 10 * 1000; // 10 seconds
 
   static const int speedingAlertTime = 15 * 1000; // 15 seconds
-  static const int speedingAlertThreshold = 13; // 13 km/h over speed limit
+  static const int speedingAlertThreshold = 10; // 10 km/h over speed limit
 }
