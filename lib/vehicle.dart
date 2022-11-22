@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/status.dart' as status;
@@ -78,6 +79,9 @@ class Vehicle {
 
         // So we will start on the map page next time the drawer is opened.
         model.vPage = 0;
+
+        // Clear any cached data.
+        rootBundle.clear();
       }
     } else if (id == 'wheel_speed') {
       final double rearSpeed = data[0] / 1;
@@ -126,30 +130,9 @@ class Vehicle {
       /// This stops the map from moving and rotating when the vehicle is not
       /// moving.
       if (distanceM >= 5) {
-        /*
-        final deltaLng = pointB.longitude - pointA.longitude;
-      
-        final x = cos(pointB.latitude) * sin(deltaLng);
-        final y = 
-          cos(pointA.latitude) * sin(pointB.latitude) - sin(pointA.latitude)
-          * cos(pointB.latitude) * cos(deltaLng);
-
-        bearingRad = atan2(x, y);
-        final bearing = bearingRad * (180 / pi);
-        final angle = (360 - ((bearing + 360)) % 360);
-        */
-
-        final double teta1 = oldPos.latitudeInRad;
-        final double teta2 = newPos.latitudeInRad;
-        final double delta2 = degToRadian(newPos.longitude - oldPos.longitude);
-        
-        final double y = sin(delta2) * cos(teta2);
-        final double x = cos(teta1)*sin(teta2) - sin(teta1)*cos(teta2)*cos(delta2);
-
-        bearingRad = atan2(y, x);
-
-        bearingDeg = radianToDeg(bearingRad);
-        bearingDeg = ( (bearingDeg + 360) % 360 ); 
+        Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
+        bearingRad = bearing.radians;
+        bearingDeg = bearing.degrees;
 
         debugPrint("$oldPos -> $newPos = $bearingDeg");
         model.updateMap(newPos, bearingDeg);
