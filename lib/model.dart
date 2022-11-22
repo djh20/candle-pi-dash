@@ -100,7 +100,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   int? lastSpeedLimitChangeTime;
 
   int? speedingStartTime;
-  bool speedingAlertsEnabled = true;
+  bool speedingAlertsEnabled = false;
   
   AppModel() {
     vehicle = Vehicle(this);
@@ -212,11 +212,6 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
 
   void updateMap(LatLng newPosition, double newRotation) async {
-    /// Only update map position if the drawer is open and on the correct
-    /// page. This stops the issue where the controller errors because the
-    /// map widget doesn't exist.
-    final bool gpsLocked = vehicle.getMetricBool("gps_locked");
-
     /// This logic is a bit weird, but it's to prevent the map from doing a
     /// large rotation when not necessary. For example:
     /// 
@@ -224,8 +219,6 @@ class AppModel extends PropertyChangeNotifier<String> {
     /// 300 degree rotation from 20 to 230, it will do a 50 degree rotation
     /// from 20 to -30. This stops the map from flipping back and forth when
     /// the rotation crosses over 360 degrees.
-    
-
     newRotation = -newRotation;
     
     final normalMag = (newRotation - mapRotation).abs();
@@ -237,6 +230,11 @@ class AppModel extends PropertyChangeNotifier<String> {
     } else if (crossNegativeMag < normalMag) {
       newRotation = -crossNegativeMag;
     }
+
+    /// Only update map position if the drawer is open and on the correct
+    /// page. This stops the issue where the controller errors because the
+    /// map widget doesn't exist.
+    final bool gpsLocked = vehicle.getMetricBool("gps_locked");
 
     if (drawerOpen && gpsLocked && vPage == 0) {
       mapLatTween = Tween<double>(
@@ -280,10 +278,10 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
 
-    final int totalSamples = max(vehicleSpeed.round() ~/ 2.5, 1);
+    final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
     //const double initialPointOffset = 50;
     
-    const int gapBetweenSamples = 5;
+    const int gapBetweenSamples = 10;
 
     //final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
     //debugPrint("$offsets");
@@ -326,6 +324,12 @@ class AppModel extends PropertyChangeNotifier<String> {
       }
     }
 
+    //Way? currentWay = getClosestWay(position, ways);
+    //debugPrint(currentWay?.tags["name"]);
+
+    final double vehicleBearing = vehicle.bearingDeg;
+    final double vehicleBearingInverted = clampAngle(vehicleBearing + 180);
+
     // Get the closest way for each offset.
     for (var i = 0; i < totalSamples; i++) {
       final offset = gapBetweenSamples * (i + 1);
@@ -346,15 +350,31 @@ class AppModel extends PropertyChangeNotifier<String> {
         sampleLngRad * (180/pi)
       );
       
-      Way? closestWay = getClosestWay(samplePos, ways);
+      WayNode? closestNode = getClosestWayNode(samplePos, ways);
+      if (closestNode != null && closestNode.way.geometry.length > 1) {
+        final Way way = closestNode.way;
+        late LatLng otherNodePos;
+        
+        if (closestNode.index < way.geometry.length - 1) {
+          otherNodePos = way.geometry[closestNode.index + 1];
+        } else {
+          otherNodePos = way.geometry[closestNode.index - 1];
+        }
 
-      if (closestWay != null) { // && closestPoint.street.speedLimit != null
-        final String wayName = closestWay.tags["name"] ?? "";
-        final int speedLimit = int.parse(closestWay.tags["maxspeed"]!);
-        debugPrint('${offset}m: $samplePos ($speedLimit) ($wayName)');
-        speedLimits.add(speedLimit);
-      } else {
-        debugPrint('${offset}m: $samplePos');
+        final double wayBearing = 
+          getBearingBetweenPoints(closestNode.pos, otherNodePos).degrees;
+
+        final double bearingDiff = min(
+          (vehicleBearing - wayBearing).abs(),
+          (vehicleBearingInverted - wayBearing).abs()
+        );
+
+        if (bearingDiff <= 20) {
+          final String wayName = way.tags["name"] ?? "";
+          final int speedLimit = int.parse(way.tags["maxspeed"]!);
+          debugPrint('${offset}m: $samplePos ($speedLimit) ($wayName) ($bearingDiff)');
+          speedLimits.add(speedLimit);
+        }
       }
     }
 
@@ -399,28 +419,28 @@ class AppModel extends PropertyChangeNotifier<String> {
         return null;
       }
     }
-    
+
     return currentSpeedLimit;
   }
 
 
-  Way? getClosestWay(LatLng pos, List<Way> ways, {double maxDistance = 40}) {
-    Way? closestWay;
-    double closestWayDistance = maxDistance;
-    //LatLng? closestWayPos;
+  WayNode? getClosestWayNode(LatLng pos, List<Way> ways, {double maxDistance = 40}) {
+    WayNode? closestWayNode;
+    double closestWayNodeDistance = maxDistance;
     
     for (var way in ways) {
-      for (var nodePos in way.geometry) {
+      for (int i = 0; i < way.geometry.length; i++) {
+        LatLng nodePos = way.geometry[i];
         final distance = getDistance(pos, nodePos);
 
-        if (distance < closestWayDistance) {
-          closestWay = way;
-          closestWayDistance = distance;
+        if (distance < closestWayNodeDistance) {
+          closestWayNode = WayNode(way, nodePos, i);
+          closestWayNodeDistance = distance;
         }
       }
     }
 
-    return closestWay;
+    return closestWayNode;
   }
 
   double getDistance(LatLng posA, LatLng posB) {
@@ -528,6 +548,14 @@ class Way {
 
     return Way(geometry, tags);
   }
+}
+
+class WayNode {
+  final Way way;
+  final LatLng pos;
+  final int index;
+
+  WayNode(this.way, this.pos, this.index);
 }
 
 /*
