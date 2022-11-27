@@ -26,20 +26,20 @@ class AppModel extends PropertyChangeNotifier<String> {
       id: "speeding_alerts_disclaimer", 
       title: "Speeding alerts active",
       subtitle: "This feature is in beta",
-      icon: Icons.report
+      icon: Icons.report_rounded
     ),
     Alert(
       id: "cc_on", 
       title: "Range is reduced",
       subtitle: "Climate control is consuming power",
-      icon: Icons.air,
+      icon: Icons.air_rounded,
       sound: "info.mp3"
     ),
     Alert(
       id: "low_range", 
       title: "Low range",
       subtitle: "10km remaining",
-      icon: Icons.battery_alert,
+      icon: Icons.battery_alert_rounded,
       sound: "critical.mp3",
       duration: const Duration(seconds: 10)
     ),
@@ -47,7 +47,7 @@ class AppModel extends PropertyChangeNotifier<String> {
       id: "speeding",
       title: "Slow down!",
       subtitle: "Exceeding detected speed limit",
-      icon: Icons.speed,
+      icon: Icons.speed_rounded,
       sound: "critical.mp3",
       duration: const Duration(seconds: 5),
       repeatable: true

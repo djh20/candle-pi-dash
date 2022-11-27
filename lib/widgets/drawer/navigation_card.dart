@@ -91,14 +91,14 @@ class _NavigationCardMapState extends State<NavigationCardMap>
           ),
           Center(
             child: Icon(
-              Icons.navigation,
+              Icons.navigation_rounded,
               color: Colors.black.withOpacity(0.5),
               size: 34
             )
           ),
           const Center(
             child: Icon(
-              Icons.navigation,
+              Icons.navigation_rounded,
               color: Colors.black,
               size: 22
             )

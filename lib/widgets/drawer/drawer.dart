@@ -41,35 +41,35 @@ class SideDrawer extends StatelessWidget {
             children: const [
               DrawerCard(
                 title: 'Map',
-                icon: Icons.map,
+                icon: Icons.map_rounded,
                 children: [
                   NavigationCardContent()
                 ],
               ),
               DrawerCard(
                 title: 'Insights', // Insights,
-                icon: Icons.search,
+                icon: Icons.search_rounded,
                 children: [
                   InsightsCardContent()
                 ],
               ),
               DrawerCard(
                 title: 'Performance',
-                icon: Icons.speed,
+                icon: Icons.speed_rounded,
                 children: [
                   PerformanceCardContent()
                 ],
               ),
               DrawerCard(
                 title: 'Settings',
-                icon: Icons.settings,
+                icon: Icons.settings_rounded,
                 children: [
                   SettingsCardContent()
                 ],
               ),
               DrawerCard(
                 title: 'Metrics',
-                icon: Icons.data_usage,
+                icon: Icons.data_usage_rounded,
                 children: [
                   MetricsCardContent()
                 ],

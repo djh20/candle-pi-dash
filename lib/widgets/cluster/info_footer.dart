@@ -35,8 +35,8 @@ class InfoFooter extends StatelessWidget {
         final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
 
         final IconData batteryIcon = 
-          (charging) ? Icons.battery_charging_full : 
-          (range >= 10) ? Icons.battery_full : Icons.battery_alert;
+          (charging) ? Icons.battery_charging_full_rounded : 
+          (range >= 10) ? Icons.battery_full_rounded : Icons.battery_alert_rounded;
         
         return Column(
           children: [
