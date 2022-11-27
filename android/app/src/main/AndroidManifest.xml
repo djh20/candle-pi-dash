@@ -1,10 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.candle_dash">
+    package="com.djh20.candle_dash">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     
     <application
-        android:label="Candle Dash"
+        android:label="CANdle Dash"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
