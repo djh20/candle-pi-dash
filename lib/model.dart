@@ -258,7 +258,6 @@ class AppModel extends PropertyChangeNotifier<String> {
 
     final oldSpeedLimit = vehicle.speedLimit;
     final speedLimit = await getSpeedLimit(newPosition, vehicle.speedLimit);
-    //vehicle.isSpeedLimitValid = (speedLimit != null);
 
     final int now = DateTime.now().millisecondsSinceEpoch;
 
@@ -291,14 +290,9 @@ class AppModel extends PropertyChangeNotifier<String> {
     final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
 
     final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
-    //const double initialPointOffset = 50;
     
     const int gapBetweenSamples = 10;
 
-    //final List<int> offsets = [gap*1, gap*2, gap*3, gap*4];
-    //debugPrint("$offsets");
-
-    //final List<StreetPoint> points = []; 
     final List<Way> ways = [];
     final List<int> speedLimits = [];
 
@@ -335,9 +329,6 @@ class AppModel extends PropertyChangeNotifier<String> {
         ways.addAll(tileWays);
       }
     }
-
-    //Way? currentWay = getClosestWay(position, ways);
-    //debugPrint(currentWay?.tags["name"]);
 
     final double vehicleBearing = vehicle.bearingDeg;
     final double vehicleBearingInverted = clampAngle(vehicleBearing + 180);
@@ -390,7 +381,6 @@ class AppModel extends PropertyChangeNotifier<String> {
       }
     }
 
-    //speedLimits.clear();
     debugPrint(speedLimits.toString());
     
     if (speedLimits.isNotEmpty) {
@@ -538,7 +528,6 @@ class Way {
   Way(this.geometry, this.tags);
 
   factory Way.fromJson(dynamic parsedJson) {
-    //final int id = parsedJson["id"];
     final tags = Map<String, String?>.from(parsedJson["tags"]);
 
     final List<dynamic> rawGeometry = parsedJson["geometry"];
@@ -556,15 +545,6 @@ class WayNode {
 
   WayNode(this.way, this.pos, this.index);
 }
-
-/*
-class StreetPoint {
-  final LatLng position;
-  final Street street;
-
-  StreetPoint(this.position, this.street);
-}
-*/
 
 class Alert {
   final String id;
