@@ -4,9 +4,9 @@ import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
-const double inMaxPower = 30;
+const double inMaxPower = 20;
 const double outMaxPower = 80;
-const double deadZone = 0.8;
+const double deadZone = 1;
 
 class PowerBar extends StatelessWidget {
   const PowerBar({Key? key}) : super(key: key);
@@ -26,8 +26,6 @@ class PowerBar extends StatelessWidget {
 
         // Vehicle must not be in park to show power.
         final bool visible = (gear > 1);
-
-        if (power.abs() < deadZone) power = 0;
         
         return AnimatedOpacity(
           opacity: visible ? 1 : 0,
@@ -36,13 +34,13 @@ class PowerBar extends StatelessWidget {
             children: [
               PowerBarSegment(
                 alignment: Alignment.centerRight,
-                widthFactor: ((-power / inMaxPower)).clamp(0, 1),
+                widthFactor: (((-power - deadZone) / inMaxPower)).clamp(0, 1),
                 color: inColor
               ),
-
+              const SizedBox(width: 4),
               PowerBarSegment(
                 alignment: Alignment.centerLeft,
-                widthFactor: ((power / outMaxPower)).clamp(0, 1),
+                widthFactor: (((power - deadZone) / outMaxPower)).clamp(0, 1),
                 color: outColor
               ),
             ],
@@ -70,12 +68,20 @@ class PowerBarSegment extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Expanded(
-      child: FractionallySizedBox(
-        alignment: alignment,
-        widthFactor: widthFactor,
-        child: Container(
-          color: color,
-          height: 7
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10)
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: AnimatedFractionallySizedBox(
+          widthFactor: widthFactor,
+          alignment: alignment,
+          duration: const Duration(milliseconds: 100),
+          child: Container(
+            color: color,
+            height: 7
+          ),
         ),
       ),
     );
