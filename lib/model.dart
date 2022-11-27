@@ -100,7 +100,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   int noSpeedLimitCounter = 0;
 
   int? speedingStartTime;
-  bool speedingAlertsEnabled = false;
+  bool speedingAlertsEnabled = true;
   
   AppModel() {
     vehicle = Vehicle(this);
