@@ -143,7 +143,7 @@ class Vehicle {
 
     } else if (id == 'gps_locked' && data[0] == 0) {
       speedLimit = null;
-      displayedSpeedLimit = null;
+      displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
     }
    
