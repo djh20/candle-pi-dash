@@ -59,7 +59,7 @@ class PerformanceCardContent extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(80),
                   elevation: 0,
-                  primary: tracking ? Colors.red : null
+                  backgroundColor: tracking ? Colors.red : null
                 ),
                 onPressed: () => 
                   model?.vehicle.pTracking.setTracking(!tracking),
