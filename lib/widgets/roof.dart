@@ -39,11 +39,6 @@ class Roof extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   StatusIcon(
-                    icon: Icons.wifi_rounded,
-                    active: connected
-                  ),
-                  const SizedBox(height: 7),
-                  StatusIcon(
                     icon: Icons.air_rounded,
                     active: fanSpeed > 0,
                     activeText: fanSpeed.toString(),
