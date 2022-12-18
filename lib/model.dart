@@ -23,12 +23,6 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   final List<Alert> alerts = [
     Alert(
-      id: "speeding_alerts_disclaimer", 
-      title: "Speeding alerts active",
-      subtitle: "This feature is in beta",
-      icon: Icons.report_rounded
-    ),
-    Alert(
       id: "cc_on", 
       title: "Range is reduced",
       subtitle: "Climate control is consuming power",

@@ -58,10 +58,6 @@ class Vehicle {
         Wakelock.enable();
         model.alertsEnabled = true;
 
-        if (model.speedingAlertsEnabled) {
-          model.showAlert("speeding_alerts_disclaimer");
-        }
-
       } else {
         Wakelock.disable();
         pTracking.setTracking(false);
