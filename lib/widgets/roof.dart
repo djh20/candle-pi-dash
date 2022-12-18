@@ -19,7 +19,7 @@ class Roof extends StatelessWidget {
         'gear'
       ],
       builder: (context, model, properties) {
-        final connected = model?.vehicle.connected ?? false;
+        final bool connected = model?.vehicle.connected ?? false;
         final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
@@ -27,57 +27,61 @@ class Roof extends StatelessWidget {
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
         final bool parked = (gear <= 1);
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AnimatedPadding(
-              padding: EdgeInsets.fromLTRB(8, parked ? 8 : 20, 8, 8),
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.fastOutSlowIn,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  StatusIcon(
-                    icon: Icons.air_rounded,
-                    active: fanSpeed > 0,
-                    activeText: fanSpeed.toString(),
-                    compact: drawerOpen
-                  ),
-                  const SizedBox(height: 7),
-                  StatusIcon(
-                    icon: Icons.eco_rounded,
-                    active: eco,
-                    activeText: "ECO",
-                    color: Colors.green,
-                    compact: drawerOpen
-                  ),
-                ]
+        return AnimatedOpacity(
+          opacity: connected ? 1 : 0,
+          duration: const Duration(milliseconds: 250),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedPadding(
+                padding: EdgeInsets.fromLTRB(8, parked ? 8 : 20, 8, 8),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.fastOutSlowIn,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StatusIcon(
+                      icon: Icons.air_rounded,
+                      active: fanSpeed > 0,
+                      activeText: fanSpeed.toString(),
+                      compact: drawerOpen
+                    ),
+                    const SizedBox(height: 7),
+                    StatusIcon(
+                      icon: Icons.eco_rounded,
+                      active: eco,
+                      activeText: "ECO",
+                      color: Colors.green,
+                      compact: drawerOpen
+                    ),
+                  ]
+                ),
               ),
-            ),
-            
-            AnimatedPadding(
-              padding: EdgeInsets.only(
-                top: !drawerOpen ? 23 : 8,
-              ),
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.fastOutSlowIn,
-              child: AnimatedScale(
-                scale: !drawerOpen ? 1 : 0.7,
+              
+              AnimatedPadding(
+                padding: EdgeInsets.only(
+                  top: !drawerOpen ? 23 : 8,
+                ),
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.fastOutSlowIn,
-                alignment: Alignment.topRight,
-                child: SpeedLimitSign(
-                  visible: 
-                    model?.vehicle.displayedSpeedLimit != null && 
-                    (model?.vehicle.displayedSpeedLimitAge ?? 0) <= 3 &&
-                    !parked,
-                  speedLimit: model?.vehicle.displayedSpeedLimit ?? 0
-                ),
+                child: AnimatedScale(
+                  scale: !drawerOpen ? 1 : 0.7,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.fastOutSlowIn,
+                  alignment: Alignment.topRight,
+                  child: SpeedLimitSign(
+                    visible: 
+                      model?.vehicle.displayedSpeedLimit != null && 
+                      (model?.vehicle.displayedSpeedLimitAge ?? 0) <= 3 &&
+                      !parked,
+                    speedLimit: model?.vehicle.displayedSpeedLimit ?? 0
+                  ),
+                )
               )
-            )
-            
-          ],
+              
+            ],
+          )
         );
       }
     );
