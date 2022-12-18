@@ -35,24 +35,23 @@ class Roof extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AnimatedPadding(
-                padding: EdgeInsets.fromLTRB(8, parked ? 8 : 20, 8, 8),
+                padding: EdgeInsets.fromLTRB(8, parked ? 8 : 22, 8, 8),
                 duration: const Duration(milliseconds: 500),
                 curve: Curves.fastOutSlowIn,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     StatusIcon(
-                      icon: Icons.air_rounded,
-                      active: fanSpeed > 0,
-                      activeText: fanSpeed.toString(),
-                      compact: drawerOpen
-                    ),
-                    const SizedBox(height: 7),
-                    StatusIcon(
                       icon: Icons.eco_rounded,
                       active: eco,
-                      activeText: "ECO",
+                      text: "ECO",
                       color: Colors.green,
+                      compact: drawerOpen
+                    ),
+                    StatusIcon(
+                      icon: Icons.air_rounded,
+                      active: fanSpeed > 0,
+                      text: fanSpeed.toString(),
                       compact: drawerOpen
                     ),
                   ]
