@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:candle_dash/model.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
@@ -65,8 +63,6 @@ class PowerBarSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
