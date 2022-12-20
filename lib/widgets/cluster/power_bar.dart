@@ -1,4 +1,5 @@
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/themes.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
@@ -14,7 +15,7 @@ class PowerBar extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final Color contrastingColor = theme.textTheme.bodyText1?.color ?? Colors.black;
     final Color outColor = contrastingColor;
-    const Color inColor = Color.fromRGBO(30, 212, 51, 1);
+    const Color inColor = chargeColor;
 
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['power_output', 'powered', 'gear'],
