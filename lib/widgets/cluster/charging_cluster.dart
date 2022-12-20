@@ -79,36 +79,15 @@ class BatteryBar extends StatelessWidget {
                   color: Colors.grey.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: Stack(
-                  children: [
-                    FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: socPercent/100,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: chargeColor,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: socPercent/100,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: chargeColor,
+                      borderRadius: BorderRadius.circular(5),
                     ),
-                    Align(
-                      alignment: const Alignment(0.8, 0),
-                      child: Container(
-                        height: double.infinity,
-                        width: 2,
-                        color: Colors.white.withOpacity(0.8)
-                      )
-                    ),
-                    const Center(
-                      child: Text(
-                        "Limit: ~90%",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold
-                        )
-                      )
-                    )
-                  ]
+                  ),
                 ),
               ),
             ),
@@ -176,7 +155,7 @@ class BatteryInfo extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "${socPercent.round()}%",
+              "${socPercent.floor()}%",
               style: const TextStyle(fontSize: 65, fontWeight: FontWeight.bold),
             ),
             Text(
@@ -196,16 +175,17 @@ class ChargeInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['power_output', 'remaining_charge_time'],
+      properties: const ['power_output', 'remaining_charge_time', 'soc_percent'],
       builder: (context, model, properties) {
         final double powerOutput = model?.vehicle.getMetricDouble('power_output') ?? 0;
         final double powerInput = max(-powerOutput, 0);
+        final double socPercent = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
 
         final Duration chargeTime = Duration(
           minutes: model?.vehicle.getMetric("remaining_charge_time")
         );
 
-        bool almostCharged = (chargeTime.inMinutes < 5) && (powerInput < 1);
+        bool almostCharged = (socPercent >= 90);
         String chargeTimeText = "";
 
         if (chargeTime.inMinutes > 0) {
@@ -215,30 +195,46 @@ class ChargeInfo extends StatelessWidget {
 
           chargeTimeText += "${chargeTime.inMinutes % 60}m";
         } else {
-          chargeTimeText = "???";
+          chargeTimeText = "TBD";
         }
         
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
-          children: !almostCharged ? [
+          children: [
             MetricDisplay(
               name: "Charge Power",
               value: "${powerInput.round()} kW",
             ),
             const SizedBox(height: 5),
-            MetricDisplay(
+
+            if (!almostCharged) MetricDisplay(
               name: "Time Remaining",
               value: chargeTimeText,
-            )
-          ] : [
-            const Text(
-              "Charging Almost Complete",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold
-              )
-            )
+            ), 
+
+            if (almostCharged) ... const [
+              SizedBox(height: 6),
+              Opacity(
+                opacity: 0.8,
+                child: Text(
+                  "Almost Fully Charged",
+                  style: TextStyle(
+                    fontSize: 26
+                  )
+                ),
+              ),
+              SizedBox(height: 4),
+              Opacity(
+                opacity: 0.6,
+                child: Text(
+                  "Battery may not reach 100%",
+                  style: TextStyle(
+                    fontSize: 16
+                  )
+                ),
+              ),
+            ]
           ],
         );
       }
