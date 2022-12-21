@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class MetricDisplay extends StatelessWidget {
   final String name;
   final String value;
+  final Color? valueColor;
 
   const MetricDisplay({ 
     Key? key,
     required this.name,
-    required this.value
+    required this.value,
+    this.valueColor
   }) : super(key: key);
 
   @override
@@ -27,9 +29,10 @@ class MetricDisplay extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 26,
-            fontWeight: FontWeight.bold
+            fontWeight: FontWeight.bold,
+            color: valueColor
           )
         ),
       ],
