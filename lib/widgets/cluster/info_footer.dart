@@ -19,7 +19,7 @@ class InfoFooter extends StatelessWidget {
         'range', 
         'soc_percent', 
         'time', 
-        'gps_trip_distance',
+        'gps_distance',
         'gps_locked'
       ],
       builder: (context, model, properties) {
@@ -27,7 +27,7 @@ class InfoFooter extends StatelessWidget {
         final double soc = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
         
         final String distance = 
-          ((model?.vehicle.getMetricDouble('gps_trip_distance') ?? 0) / 1000)
+          ((model?.vehicle.getMetricDouble('gps_distance') ?? 0) / 1000)
           .toStringAsFixed(1);
 
         final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
