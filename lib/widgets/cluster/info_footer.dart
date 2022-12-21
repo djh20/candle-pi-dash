@@ -20,13 +20,11 @@ class InfoFooter extends StatelessWidget {
         'soc_percent', 
         'time', 
         'gps_trip_distance',
-        'gps_locked',
-        'charging'
+        'gps_locked'
       ],
       builder: (context, model, properties) {
         final int range = model?.vehicle.getMetric('range') ?? 0;
         final double soc = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
-        final bool charging = model?.vehicle.getMetricBool('charging') ?? false;
         
         final String distance = 
           ((model?.vehicle.getMetricDouble('gps_trip_distance') ?? 0) / 1000)
@@ -35,7 +33,6 @@ class InfoFooter extends StatelessWidget {
         final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
 
         final IconData batteryIcon = 
-          (charging) ? Icons.battery_charging_full_rounded : 
           (range >= 10) ? Icons.battery_full_rounded : Icons.battery_alert_rounded;
         
         return Column(
