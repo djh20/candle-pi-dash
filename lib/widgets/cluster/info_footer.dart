@@ -17,23 +17,34 @@ class InfoFooter extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const [
         'range', 
+        'range_at_last_charge'
         'soc_percent', 
         'time', 
         'gps_distance',
         'gps_locked'
       ],
       builder: (context, model, properties) {
-        final int range = model?.vehicle.getMetric('range') ?? 0;
+        final int range = model?.vehicle.getMetric('range');
+        final int rangeAtLastCharge = model?.vehicle.getMetric('range_at_last_charge');
+
         final double soc = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
         
-        final String distance = 
-          ((model?.vehicle.getMetricDouble('gps_distance') ?? 0) / 1000)
-          .toStringAsFixed(1);
+        final double gpsDistance = 
+          (model?.vehicle.getMetricDouble('gps_distance') ?? 0) / 1000;
+
+        final String gpsDistanceFormatted = gpsDistance.toStringAsFixed(1);
 
         final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
 
         final IconData batteryIcon = 
           (range > 10) ? Icons.battery_full_rounded : Icons.battery_alert_rounded;
+
+        final double idealRange = rangeAtLastCharge - gpsDistance;
+        final int rangeVariation = (range - idealRange).round();
+
+        final String rangeVariationText = 
+          (rangeVariation == 0 || rangeAtLastCharge == 0) ? "Perfect" :
+          (rangeVariation > 0) ? "+$rangeVariation km" : "$rangeVariation km";
         
         return Column(
           children: [
@@ -63,8 +74,13 @@ class InfoFooter extends StatelessWidget {
               ),
               child: MetricDisplay(
                 name: 'Travelled',
-                value: '$distance km',
+                value: '$gpsDistanceFormatted km',
               ),
+            ),
+            MetricDisplay(
+              name: 'Efficiency',
+              value: rangeVariationText,
+              valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
             ),
             MetricDisplay(
               name: 'Charge',
