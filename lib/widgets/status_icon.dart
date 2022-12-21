@@ -5,6 +5,7 @@ class StatusIcon extends StatelessWidget {
   final Color? color;
   final bool active;
   final String? text;
+  final double size;
   final bool compact;
 
   const StatusIcon({ 
@@ -13,19 +14,18 @@ class StatusIcon extends StatelessWidget {
     this.color,
     this.active = true,
     this.text,
+    this.size = 34,
     this.compact = false
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    const double height = 28;
-
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 250),
       curve: Curves.fastOutSlowIn,
       opacity: active ? 1 : 0,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: height),
+        constraints: BoxConstraints(maxHeight: size),
         child: AnimatedFractionallySizedBox(
           duration: const Duration(milliseconds: 250),
           curve: Curves.fastOutSlowIn,
@@ -34,7 +34,7 @@ class StatusIcon extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                size: height,
+                size: size,
                 color: color
               ),
               const SizedBox(width: 3),
