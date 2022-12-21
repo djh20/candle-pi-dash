@@ -20,12 +20,14 @@ class Roof extends StatelessWidget {
       ],
       builder: (context, model, properties) {
         final bool connected = model?.vehicle.connected ?? false;
-        final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
         //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
         final bool parked = (gear <= 1);
+
+        final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
+        final int fanSpeedPercent = ((fanSpeed / 7) * 100).round();
 
         return AnimatedOpacity(
           opacity: connected ? 1 : 0,
@@ -51,7 +53,7 @@ class Roof extends StatelessWidget {
                     StatusIcon(
                       icon: Icons.air_rounded,
                       active: fanSpeed > 0,
-                      text: fanSpeed.toString(),
+                      text: "$fanSpeedPercent%",
                       compact: drawerOpen
                     ),
                   ]
