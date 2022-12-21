@@ -1,4 +1,6 @@
+import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/widgets/cluster/metric_display.dart';
 import 'package:flutter/material.dart';
 import 'package:property_change_notifier/property_change_notifier.dart';
 
@@ -12,20 +14,29 @@ class MetricsCardContent extends StatelessWidget {
         List<Widget> items = [];
         final metrics = model?.vehicle.metrics;
 
-        if (metrics != null) {
+        if (metrics != null && metrics.isNotEmpty) {
           metrics.forEach((key, value) {
             items.add(
-              Text(
-                '$key: $value',
-                style: const TextStyle(fontSize: 12)
+              MetricDisplay(
+                name: key, 
+                value: value.join(", ")
               )
             );
           });
+        } else {
+          items.add(const Text("No metrics available."));
         }
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: items,
+
+        return SizedBox(
+          height: Constants.cardContentHeight,
+          child: FittedBox(
+            alignment: Alignment.topCenter,
+            fit: BoxFit.scaleDown,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: items,
+            ),
+          )
         );
 
       }
