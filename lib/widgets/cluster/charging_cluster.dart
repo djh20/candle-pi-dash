@@ -192,7 +192,7 @@ class ChargeInfo extends StatelessWidget {
         );
 
         bool chargeFinished = (chargeStatus == 2);
-        bool chargeAlmostFinished = (socPercent >= 90) && !chargeFinished;
+        bool chargeAlmostFinished = (socPercent >= 90) && (chargeStatus == 1);
         String chargeTimeText = "";
 
         if (chargeTime.inMinutes > 0) {
