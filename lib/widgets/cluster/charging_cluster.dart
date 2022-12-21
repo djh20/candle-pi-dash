@@ -37,7 +37,7 @@ class ChargingCluster extends StatelessWidget {
                     Opacity(
                       opacity: 0.2,
                       child: Image.asset(
-                        "assets/charging/leaf.png",
+                        "assets/renders/leaf/charging.png",
                       ),
                     ),
                     const AspectRatio(
@@ -175,17 +175,24 @@ class ChargeInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['power_output', 'remaining_charge_time', 'soc_percent'],
+      properties: const [
+        'power_output', 
+        'remaining_charge_time', 
+        'soc_percent',
+        'charge_status'
+      ],
       builder: (context, model, properties) {
         final double powerOutput = model?.vehicle.getMetricDouble('power_output') ?? 0;
         final double powerInput = max(-powerOutput, 0);
         final double socPercent = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
+        final int chargeStatus = model?.vehicle.getMetric('charge_status');
 
         final Duration chargeTime = Duration(
           minutes: model?.vehicle.getMetric("remaining_charge_time")
         );
 
-        bool almostCharged = (socPercent >= 90);
+        bool chargeFinished = (chargeStatus == 2);
+        bool chargeAlmostFinished = (socPercent >= 90) && !chargeFinished;
         String chargeTimeText = "";
 
         if (chargeTime.inMinutes > 0) {
@@ -202,18 +209,20 @@ class ChargeInfo extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            MetricDisplay(
-              name: "Charge Power",
-              value: "${powerInput.round()} kW",
+            if (!chargeFinished) Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: MetricDisplay(
+                name: "Charge Power",
+                value: "${powerInput.round()} kW",
+              ),
             ),
-            const SizedBox(height: 5),
 
-            if (!almostCharged) MetricDisplay(
+            if (!chargeAlmostFinished && !chargeFinished) MetricDisplay(
               name: "Time Remaining",
               value: chargeTimeText,
             ), 
 
-            if (almostCharged) ... const [
+            if (chargeAlmostFinished) ... const [
               SizedBox(height: 6),
               Opacity(
                 opacity: 0.8,
@@ -234,7 +243,14 @@ class ChargeInfo extends StatelessWidget {
                   )
                 ),
               ),
-            ]
+            ],
+
+            if (chargeFinished) const Text(
+              "Charging Complete",
+              style: TextStyle(
+                fontSize: 26
+              )
+            ),
           ],
         );
       }
@@ -252,10 +268,17 @@ class ChargeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(
-      Icons.bolt_rounded, 
-      size: size,
-      color: chargeColor
+    return PropertyChangeConsumer<AppModel, String>(
+      properties: const ['charge_status'],
+      builder: (context, model, properties) {
+        final bool charging = model?.vehicle.getMetric("charge_status") == 1;
+
+        return Icon(
+          Icons.bolt_rounded, 
+          size: size,
+          color: charging ? chargeColor : Colors.grey
+        );
+      }
     );
   }
 }

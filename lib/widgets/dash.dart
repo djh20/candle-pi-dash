@@ -14,10 +14,10 @@ class Dash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['connected', 'charging', 'drawer'],
+      properties: const ['connected', 'plugged_in', 'drawer'],
       builder: (context, model, properties) {
         final bool connected = (model?.vehicle.connected == true);
-        final bool charging = model?.vehicle.getMetricBool("charging") ?? false;
+        final bool pluggedIn = model?.vehicle.getMetricBool("plugged_in") ?? false;
         
         return Stack(
           fit: StackFit.expand,
@@ -34,7 +34,7 @@ class Dash extends StatelessWidget {
                 transitionBuilder: (child, animation) => 
                   DilateTransition(child: child, animation: animation),
                 child: connected ? 
-                  (charging ? const ChargingCluster() : const DrivingCluster())
+                  (pluggedIn ? const ChargingCluster() : const DrivingCluster())
                   : const ConnectingCluster()
               )
             ),
