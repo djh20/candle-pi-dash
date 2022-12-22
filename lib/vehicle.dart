@@ -52,9 +52,9 @@ class Vehicle {
     return (metrics[id]?[index] ?? 0) + .0;
   }
 
-  void metricUpdated(String id, List<dynamic> data) {
+  void metricUpdated(String id, List<dynamic> state) {
     if (id == 'powered') {
-      if (data[0] == 1) {
+      if (state[0] == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
 
@@ -81,7 +81,7 @@ class Vehicle {
         rootBundle.clear();
       }
     } else if (id == 'wheel_speed') {
-      final double rearSpeed = data[0] / 1;
+      final double rearSpeed = state[0] / 1;
       pTracking.update(rearSpeed);
 
       final bool speeding = 
@@ -106,16 +106,16 @@ class Vehicle {
         model.speedingStartTime = null;
       }
       
-    } else if (id == 'cc_fan_speed' && data[0] > 0) {
+    } else if (id == 'cc_fan_speed' && state[0] > 0) {
       model.showAlert("cc_on");
     
-    } else if (id == 'range' && data[0] <= 10) {
+    } else if (id == 'range' && state[0] <= 10) {
       model.showAlert("low_range");
 
-    } else if (id == 'gps_position' && data.length == 2) {
+    } else if (id == 'gps_position' && state.length == 2) {
       const distance = Distance();
       final oldPos = position;
-      final newPos = LatLng(data[0] + .0, data[1] + .0);
+      final newPos = LatLng(state[0] + .0, state[1] + .0);
       
       final double distanceM = distance.as(
         LengthUnit.Meter,
@@ -137,7 +137,7 @@ class Vehicle {
 
       position = newPos;
 
-    } else if (id == 'gps_locked' && data[0] == 0) {
+    } else if (id == 'gps_locked' && state[0] == 0) {
       speedLimit = null;
       displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
@@ -150,11 +150,11 @@ class Vehicle {
     final decodedData = jsonDecode(data);
     if (initialized) {
       int index = decodedData[0];
-      List<dynamic> values = decodedData[1];
+      List<dynamic> state = decodedData[1];
       
       String id = metrics.keys.elementAt(index);
-      metrics[id] = values;
-      metricUpdated(id, values);
+      metrics[id] = state;
+      metricUpdated(id, state);
     } else {
       /// This means the data is the first message from the websocket. The first
       /// message contains a list of metric ids seperated by commas. We can use
