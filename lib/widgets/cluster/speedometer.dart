@@ -12,7 +12,7 @@ class Speedometer extends StatelessWidget {
     ThemeData theme = Theme.of(context);
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['wheel_speed', 'powered', 'gear', 'eco', 'drawer', 'speedLimit'],
+      properties: const ['wheel_speed', 'powered', 'gear', 'drawer', 'speedLimit'],
       builder: (context, model, properties) {
         final double leftSpeed = model?.vehicle.getMetricDouble('wheel_speed', 1) ?? 0;
         final double rightSpeed = model?.vehicle.getMetricDouble('wheel_speed', 2) ?? 0;
