@@ -245,7 +245,7 @@ class AppModel extends PropertyChangeNotifier<String> {
       //print('$mapRotation -> $newRotation ($tweenRotation)');
       
       mapAnim =
-        CurvedAnimation(parent: mapAnimController, curve: Curves.fastOutSlowIn);
+        CurvedAnimation(parent: mapAnimController, curve: Curves.linear);
       mapAnimController.reset();
       mapAnimController.forward();
     }
