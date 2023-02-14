@@ -12,17 +12,18 @@ class InsightsCardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const [
-        'wheel_speed',
+        'left_wheel_speed',
+        'right_wheel_speed',
         'motor_temp',
         'inverter_temp',
         'power_output'
       ],
       builder: (context, model, properties) {
         final double leftSpeed = 
-          model?.vehicle.getMetricDouble('wheel_speed', 1) ?? 0;
+          model?.vehicle.getMetricDouble('left_wheel_speed') ?? 0;
 
         final double rightSpeed = 
-          model?.vehicle.getMetricDouble('wheel_speed', 2) ?? 0;
+          model?.vehicle.getMetricDouble('right_wheel_speed') ?? 0;
 
         final double inverterTemp = 
           model?.vehicle.getMetricDouble('inverter_temp') ?? 0;

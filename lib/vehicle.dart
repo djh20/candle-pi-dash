@@ -14,11 +14,11 @@ import 'package:wakelock/wakelock.dart';
 class Vehicle {
   late AppModel model;
 
-  var metrics = <String, List<dynamic>>{};
+  var metrics = <String, dynamic>{};
 
   bool connected = false;
   bool connecting = false;
-  bool initialized = false;
+  //bool initialized = false;
 
   late IOWebSocketChannel socket;
 
@@ -34,29 +34,30 @@ class Vehicle {
   LatLng position = LatLng(0, 0);
   double bearingRad = 0;
   double bearingDeg = 0;
-
+  
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
   }
 
-  dynamic getMetric(String id, [int index = 0]) {
-    return metrics[id]?[index] ?? 0;
+  dynamic getMetric(String id) {
+    return metrics[id] ?? 0;
   }
 
-  bool getMetricBool(String id, [int index = 0]) {
-    return metrics[id]?[index] == 1 ? true : false;
+  bool getMetricBool(String id) {
+    return metrics[id] == 1 ? true : false;
   }
 
-  double getMetricDouble(String id, [int index = 0]) {
+  double getMetricDouble(String id) {
     // Ensures the value is a double, not a int.
-    return (metrics[id]?[index] ?? 0) + .0;
+    return (metrics[id] ?? 0) + .0;
   }
 
-  void metricUpdated(String id, List<dynamic> state) {
+  void metricUpdated(String id, dynamic value) {
     if (id == 'powered') {
-      if (state[0] == 1) {
+      if (value == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
+        model.showAlert("experimental");
 
       } else {
         Wakelock.disable();
@@ -80,8 +81,8 @@ class Vehicle {
         // Clear any cached data.
         rootBundle.clear();
       }
-    } else if (id == 'wheel_speed') {
-      final double rearSpeed = state[0] / 1;
+    } else if (id == 'rear_wheel_speed') {
+      final double rearSpeed = value / 1;
       pTracking.update(rearSpeed);
 
       final bool speeding = 
@@ -106,16 +107,16 @@ class Vehicle {
         model.speedingStartTime = null;
       }
       
-    } else if (id == 'cc_fan_speed' && state[0] > 0) {
+    } else if (id == 'cc_fan_speed' && value > 0) {
       model.showAlert("cc_on");
     
-    } else if (id == 'range' && state[0] <= 10 && state[0] > 0) {
+    } else if (id == 'range' && value <= 10 && value > 0) {
       model.showAlert("low_range");
 
-    } else if (id == 'gps_position' && state.length == 2) {
+    } else if (id == 'gps_position' && false) {
       const distance = Distance();
       final oldPos = position;
-      final newPos = LatLng(state[0] + .0, state[1] + .0);
+      final newPos = LatLng(value[0] + .0, value[1] + .0);
       
       final double distanceM = distance.as(
         LengthUnit.Meter,
@@ -137,7 +138,7 @@ class Vehicle {
 
       position = newPos;
 
-    } else if (id == 'gps_locked' && state[0] == 0) {
+    } else if (id == 'gps_locked' && value == 0) {
       speedLimit = null;
       displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
@@ -148,28 +149,13 @@ class Vehicle {
 
   void process(String data) {
     final decodedData = jsonDecode(data);
-    if (initialized) {
-      int index = decodedData[0];
-      List<dynamic> state = decodedData[1];
-      
-      String id = metrics.keys.elementAt(index);
-      metrics[id] = state;
-      metricUpdated(id, state);
-    } else {
-      /// This means the data is the first message from the websocket. The first
-      /// message contains a list of metric ids seperated by commas. We can use
-      /// this list to assign a starting value of [0] for each metric.
-
-      metrics.clear();
-
-      List<String> ids = List.castFrom(decodedData);
-      
-      for (var id in ids) {
-        metrics[id] = [0];
-      }
-
-      initialized = true;
-    }
+    
+    decodedData.forEach((id, value) {
+      //if (id == "powered") value = 1;
+      //if (id == "gear") value = 4;
+      metrics[id] = value;
+      metricUpdated(id, value);
+    });
   }
 
   void connect() async {
@@ -180,23 +166,14 @@ class Vehicle {
 
     try {
       final ws = await WebSocket
-        .connect('ws://$ip:8080/ws') //10.1.1.20 10.1.2.57 192.168.1.1
+        .connect('ws://$ip/ws')
         .timeout(const Duration(seconds: 5));
 
       debugPrint('[websocket] connected!');
       socket = IOWebSocketChannel(ws);
 
       connecting = false; connected = true;
-
-      const jsonEncoder = JsonEncoder();
-
-      final subscribeMsg = {
-        'event': 'subscribe',
-        'topic': 'metrics'
-      };
-
-      ws.add( jsonEncoder.convert(subscribeMsg) );
-
+      
       model.notify('connected');
       //this.car.model.update();
 
@@ -221,7 +198,8 @@ class Vehicle {
 
     socket.sink.close(status.goingAway);
     connected = false;
-    initialized = false;
+    //initialized = false;
+    metrics.clear();
 
     debugPrint('[websocket] closed');
 

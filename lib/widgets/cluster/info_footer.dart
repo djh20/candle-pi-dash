@@ -67,6 +67,7 @@ class InfoFooter extends StatelessWidget {
             ),
             
             const SizedBox(height: 5),
+            /*
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 500),
               style: TextStyle(
@@ -82,9 +83,20 @@ class InfoFooter extends StatelessWidget {
               value: rangeVariationText,
               valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
             ),
+            */
+            const MetricDisplay(
+              name: 'Travelled',
+              value: 'Disabled',
+              valueColor: Colors.grey,
+            ),
+            const MetricDisplay(
+              name: 'Efficiency',
+              value: 'Disabled',
+              valueColor: Colors.grey,
+            ),
             MetricDisplay(
               name: 'Charge',
-              value: '$soc%',
+              value: '${soc.round()}%',
             )
           ],
         );

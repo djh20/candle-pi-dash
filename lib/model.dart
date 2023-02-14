@@ -46,6 +46,13 @@ class AppModel extends PropertyChangeNotifier<String> {
       duration: const Duration(seconds: 5),
       repeatable: true
     ),
+    Alert(
+      id: "experimental",
+      title: "Experimental version",
+      subtitle: "Expect bugs & crashes",
+      icon: Icons.bug_report,
+      duration: const Duration(seconds: 5)
+    ),
   ];
 
   bool alertsEnabled = false;
@@ -281,7 +288,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     final latRad = position.latitudeInRad;  
     final lngRad = position.longitudeInRad;
 
-    final vehicleSpeed = vehicle.getMetricDouble("wheel_speed");
+    final vehicleSpeed = vehicle.getMetricDouble("rear_wheel_speed");
 
     final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
     

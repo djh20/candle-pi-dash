@@ -19,7 +19,7 @@ class MetricsCardContent extends StatelessWidget {
             items.add(
               MetricDisplay(
                 name: key, 
-                value: value.join(", ")
+                value: value.toString()
               )
             );
           });

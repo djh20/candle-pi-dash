@@ -12,10 +12,16 @@ class Speedometer extends StatelessWidget {
     ThemeData theme = Theme.of(context);
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['wheel_speed', 'powered', 'gear', 'drawer', 'speedLimit'],
+      properties: const [
+        'left_wheel_speed', 
+        'right_wheel_speed', 
+        'powered',
+        'gear',
+        'drawer',
+        'speedLimit'],
       builder: (context, model, properties) {
-        final double leftSpeed = model?.vehicle.getMetricDouble('wheel_speed', 1) ?? 0;
-        final double rightSpeed = model?.vehicle.getMetricDouble('wheel_speed', 2) ?? 0;
+        final double leftSpeed = model?.vehicle.getMetricDouble('left_wheel_speed') ?? 0;
+        final double rightSpeed = model?.vehicle.getMetricDouble('right_wheel_speed') ?? 0;
 
         /// We average the left and right speed because the senors go down to
         /// 1 km/h, whereas the rear speed only goes down to 3 km/h.
