@@ -34,7 +34,7 @@ class Vehicle {
   LatLng position = LatLng(0, 0);
   double bearingRad = 0;
   double bearingDeg = 0;
-  
+
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
   }
@@ -81,13 +81,13 @@ class Vehicle {
         // Clear any cached data.
         rootBundle.clear();
       }
-    } else if (id == 'rear_wheel_speed') {
-      final double rearSpeed = value / 1;
-      pTracking.update(rearSpeed);
+    } else if (id == 'speed') {
+      final double speed = value / 1;
+      pTracking.update(speed);
 
       final bool speeding = 
         speedLimit != null && 
-        rearSpeed > (speedLimit! + Constants.speedingAlertThreshold);
+        speed > (speedLimit! + Constants.speedingAlertThreshold);
 
       if (speeding && model.speedingAlertsEnabled) {
         final int now = DateTime.now().millisecondsSinceEpoch;

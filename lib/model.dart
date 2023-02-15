@@ -288,7 +288,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     final latRad = position.latitudeInRad;  
     final lngRad = position.longitudeInRad;
 
-    final vehicleSpeed = vehicle.getMetricDouble("rear_wheel_speed");
+    final vehicleSpeed = vehicle.getMetricDouble("speed");
 
     final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
     
