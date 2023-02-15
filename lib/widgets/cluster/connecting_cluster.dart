@@ -7,12 +7,21 @@ class ConnectingCluster extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        Icon(Icons.cable, size: 32),
-        SizedBox(width: 8),
-        Text(
-          "Connecting to vehicle...", 
-          style: TextStyle(fontSize: 24)
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(Icons.cable, size: 38),
+            Transform.scale(
+              scale: 1.3,
+              child: const CircularProgressIndicator(strokeWidth: 2)
+            )
+          ],
+        ),
+        const SizedBox(width: 16),
+        const Text(
+          "Connecting...", 
+          style: TextStyle(fontSize: 32)
         ),
       ],
     );
