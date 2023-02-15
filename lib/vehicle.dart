@@ -169,6 +169,8 @@ class Vehicle {
         .connect('ws://$ip/ws')
         .timeout(const Duration(seconds: 5));
 
+      ws.pingInterval = const Duration(seconds: 1);
+
       debugPrint('[websocket] connected!');
       socket = IOWebSocketChannel(ws);
 
