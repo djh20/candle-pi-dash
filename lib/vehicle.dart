@@ -153,8 +153,10 @@ class Vehicle {
     decodedData.forEach((id, value) {
       //if (id == "powered") value = 1;
       //if (id == "gear") value = 4;
-      metrics[id] = value;
-      metricUpdated(id, value);
+      if (metrics[id] != value) {
+        metrics[id] = value;
+        metricUpdated(id, value);
+      }
     });
   }
 
