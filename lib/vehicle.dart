@@ -107,7 +107,7 @@ class Vehicle {
         model.speedingStartTime = null;
       }
       
-    } else if (id == 'cc_fan_speed' && value > 0) {
+    } else if (id == 'fan_speed' && value > 0) {
       model.showAlert("cc_on");
     
     } else if (id == 'range' && value <= 10 && value > 0) {

@@ -13,7 +13,7 @@ class Roof extends StatelessWidget {
       properties: const [
         'connected', 
         'speedLimit', 
-        'cc_fan_speed',
+        'fan_speed',
         'eco',
         'drawer',
         'gear'
@@ -26,7 +26,7 @@ class Roof extends StatelessWidget {
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
         final bool parked = (gear <= 1);
 
-        final int fanSpeed = model?.vehicle.getMetric('cc_fan_speed') ?? 0;
+        final int fanSpeed = model?.vehicle.getMetric('fan_speed') ?? 0;
         final int fanSpeedPercent = ((fanSpeed / 7) * 100).round();
 
         return AnimatedOpacity(
