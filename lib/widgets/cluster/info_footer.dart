@@ -96,7 +96,7 @@ class InfoFooter extends StatelessWidget {
             ),
             MetricDisplay(
               name: 'Charge',
-              value: '${soc.round()}%',
+              value: '${soc.toStringAsFixed(1)}%',
             )
           ],
         );
