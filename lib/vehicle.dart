@@ -52,9 +52,9 @@ class Vehicle {
     return (metrics[id] ?? 0) + .0;
   }
 
-  void metricUpdated(String id, dynamic value) {
-    if (id == 'powered') {
-      if (value == 1) {
+  void metricsUpdated(List<String> ids) {
+    if (ids.contains("powered")) {
+      if (metrics["powered"] == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
         model.showAlert("experimental");
@@ -81,8 +81,8 @@ class Vehicle {
         // Clear any cached data.
         rootBundle.clear();
       }
-    } else if (id == 'speed') {
-      final double speed = value / 1;
+    } else if (ids.contains("speed")) {
+      final double speed = metrics["speed"] / 1;
       pTracking.update(speed);
 
       final bool speeding = 
@@ -107,16 +107,20 @@ class Vehicle {
         model.speedingStartTime = null;
       }
       
-    } else if (id == 'fan_speed' && value > 0) {
+    } else if (ids.contains("fan_speed") && metrics["fan_speed"] > 0) {
       model.showAlert("cc_on");
     
-    } else if (id == 'range' && value <= 10 && value > 0) {
-      model.showAlert("low_range");
+    } else if (ids.contains("range")) {
+      int range = metrics["range"];
+      if (range > 0 && range <= 10) model.showAlert("low_range");
 
-    } else if (id == 'gps_position' && false) {
+    } else if (ids.contains("gps_lat") || ids.contains("gps_lng")) {
+      double lat = metrics["gps_lat"];
+      double lng = metrics["gps_lng"];
+
       const distance = Distance();
       final oldPos = position;
-      final newPos = LatLng(value[0] + .0, value[1] + .0);
+      final newPos = LatLng(lat, lng);
       
       final double distanceM = distance.as(
         LengthUnit.Meter,
@@ -138,26 +142,29 @@ class Vehicle {
 
       position = newPos;
 
-    } else if (id == 'gps_locked' && value == 0) {
+    } else if (ids.contains("gps_lock") && metrics["gps_lock"] == 0) {
       speedLimit = null;
       displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
     }
    
-    model.notify(id);
+    for (var id in ids) {
+      model.notify(id);
+    }
   }
 
   void process(String data) {
     final decodedData = jsonDecode(data);
+    List<String> updatedMetrics = [];
     
     decodedData.forEach((id, value) {
-      //if (id == "powered") value = 1;
-      //if (id == "gear") value = 4;
       if (metrics[id] != value) {
         metrics[id] = value;
-        metricUpdated(id, value);
+        updatedMetrics.add(id);
       }
     });
+
+    metricsUpdated(updatedMetrics);
   }
 
   void connect() async {

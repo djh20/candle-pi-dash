@@ -21,7 +21,7 @@ class InfoFooter extends StatelessWidget {
         'soc_percent', 
         'time', 
         'gps_distance',
-        'gps_locked'
+        'gps_lock'
       ],
       builder: (context, model, properties) {
         final int range = model?.vehicle.getMetric('range');
@@ -34,7 +34,7 @@ class InfoFooter extends StatelessWidget {
 
         final String gpsDistanceFormatted = gpsDistance.toStringAsFixed(1);
 
-        final bool gpsLocked = model?.vehicle.getMetricBool('gps_locked') ?? false;
+        final bool gpsLocked = model?.vehicle.getMetricBool('gps_lock') ?? false;
 
         final IconData batteryIcon = 
           (range > 10) ? Icons.battery_full_rounded : Icons.battery_alert_rounded;
@@ -67,7 +67,6 @@ class InfoFooter extends StatelessWidget {
             ),
             
             const SizedBox(height: 5),
-            /*
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 500),
               style: TextStyle(
@@ -82,17 +81,6 @@ class InfoFooter extends StatelessWidget {
               name: 'Efficiency',
               value: rangeVariationText,
               valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
-            ),
-            */
-            const MetricDisplay(
-              name: 'Travelled',
-              value: 'Disabled',
-              valueColor: Colors.grey,
-            ),
-            const MetricDisplay(
-              name: 'Efficiency',
-              value: 'Disabled',
-              valueColor: Colors.grey,
             ),
             MetricDisplay(
               name: 'Charge',
