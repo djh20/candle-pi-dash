@@ -6,10 +6,11 @@ import 'package:candle_dash/model.dart';
 import 'package:candle_dash/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/status.dart' as status;
 import 'package:wakelock/wakelock.dart';
+
+FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
 
 class Vehicle {
   late AppModel model;
@@ -20,11 +21,7 @@ class Vehicle {
   bool connecting = false;
   //bool initialized = false;
 
-  late IOWebSocketChannel socket;
-
   late PerformanceTracking pTracking;
-
-  String host = Constants.defaultHost;
 
   //Street? street;
   int? speedLimit;
@@ -34,6 +31,14 @@ class Vehicle {
   LatLng position = LatLng(0, 0);
   double bearingRad = 0;
   double bearingDeg = 0;
+  
+  String? btAddress;
+  BluetoothConnection? btConnection;
+
+  String buffer = "";
+  bool waitingForReply = false;
+  String? lastCommand;
+  List<String> commandQueue = [];
 
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
@@ -153,7 +158,8 @@ class Vehicle {
     }
   }
 
-  void process(String data) {
+  void process(Uint8List data) {
+    /*
     final decodedData = jsonDecode(data);
     List<String> updatedMetrics = [];
     
@@ -165,54 +171,131 @@ class Vehicle {
     });
 
     metricsUpdated(updatedMetrics);
+    */
+    for (var charCode in data) {
+      if (charCode != 13) {
+        buffer += String.fromCharCode(charCode);
+
+      } else if (buffer.isNotEmpty) {
+        String msg = buffer.replaceAll('>', '');
+        //debugPrint("[bluetooth] RX: $msg");
+
+        if (lastCommand == "ATMA" && msg.length == 8*2) {
+          RegExp exp = RegExp(r'.{2}');
+          Iterable<Match> matches = exp.allMatches(msg);
+          var frameData = 
+            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+            
+          debugPrint('$frameData');
+          
+          double frontRightSpeed = ((frameData[0] << 8) | frameData[1]) / 208;
+          double frontLeftSpeed = ((frameData[2] << 8) | frameData[3]) / 208;
+
+          double speed = (frontRightSpeed + frontLeftSpeed) / 2;
+          if (metrics['speed'] != speed) {
+            metrics['speed'] = speed;
+            metricsUpdated(['speed']);
+          }
+        }
+
+        if (msg != lastCommand) { // Ignore echo
+          waitingForReply = false;
+          processQueue();
+        }
+
+        buffer = "";
+      }
+    }
+  }
+
+  void sendCommand(String command) {
+    command = command.replaceAll(' ', '').replaceAll('>', '');
+    lastCommand = command;
+    debugPrint("[bluetooth] TX: $command");
+    btConnection?.output.add(ascii.encode('$command\r'));
+  }
+
+  void queueCommand(String command) {
+    commandQueue.add(command);
+    processQueue();
+  }
+
+  void processQueue() {
+    if (commandQueue.isEmpty || waitingForReply) return;
+
+    String command = commandQueue.first;
+    commandQueue.removeAt(0);
+    waitingForReply = true;
+    sendCommand(command);
   }
 
   void connect() async {
     if (connected || connecting) return;
 
-    connecting = true;
-    debugPrint('[websocket] connecting...');
+    if (btAddress == null) {
+      var bondedDevices = await bluetoothSerial.getBondedDevices();
+      if (bondedDevices.isNotEmpty) {
+        btAddress = bondedDevices[0].address;
+      }
+    }
 
-    try {
-      final ws = await WebSocket
-        .connect('ws://$host/ws')
-        .timeout(const Duration(seconds: 5));
+    if (btAddress != null) {
+      connecting = true;
+      debugPrint('[bluetooth] connecting to $btAddress');
 
-      ws.pingInterval = const Duration(seconds: 2);
+      try {
+        var connection = await BluetoothConnection.toAddress(btAddress);
+        if (connection.isConnected) {
+          connected = true;
+          btConnection = connection;
+          connection.input?.listen(process);
+        }
 
-      debugPrint('[websocket] connected!');
-      socket = IOWebSocketChannel(ws);
+      } catch (exception) {
+        debugPrint(exception.toString());
+      }
 
-      connecting = false; connected = true;
-      
-      model.notify('connected');
-      //this.car.model.update();
-
-      socket.stream.listen((data) {
-        process(data);
-      },
-        onDone: () => reconnect()
-      );
-
-      //socket.sink.add('subscribe_binary');
-    } catch (exception) {
       connecting = false;
+    }
+
+    if (connected) {
+      debugPrint('[bluetooth] connected!');
+      model.notify('connected');
+      queueCommand("AT Z");
+      queueCommand("AT E0");
+      queueCommand("AT SP6");
+      queueCommand("AT CAF0");
+      queueCommand("AT S0");
+      queueCommand("AT CRA 284");
+      queueCommand("AT MA");
+
+      metrics['powered'] = 1;
+      metrics['gear'] = 4;
+      metrics['speed'] = 99;
+
+      metricsUpdated(['powered', 'gear', 'speed']);
+      
+    } else {
+      debugPrint('[bluetooth] connection failed!');
       Future.delayed(const Duration(milliseconds: 500), () {
         reconnect();
       });
-      debugPrint('[websocket] connection failed!');
     }
   }
 
   void close() {
     if (!connected) return;
 
-    socket.sink.close(status.goingAway);
     connected = false;
-    //initialized = false;
+    sendCommand("AT MA");
+    btConnection?.close();
+    btConnection = null;
+    
+    waitingForReply = false;
+    commandQueue.clear();
     metrics.clear();
 
-    debugPrint('[websocket] closed');
+    debugPrint('[bluetooth] closed');
 
     model.notify('connected');
   }
