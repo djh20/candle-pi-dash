@@ -19,6 +19,16 @@ class SettingsCardContent extends StatelessWidget {
       builder: (context, model, properties) {
         return Column(
           children: [
+            TextFormField(
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: Constants.defaultHost,
+              ),
+              textAlign: TextAlign.center,
+              initialValue: model?.vehicle.host,
+              onFieldSubmitted: (value) => model?.vehicle.host = value
+            ),
+            
             ElevatedButton(
               child: const Text("LIGHT THEME"),
               style: buttonStyle,
@@ -39,14 +49,6 @@ class SettingsCardContent extends StatelessWidget {
               child: const Text("AUTO THEME"),
               style: buttonStyle,
               onPressed: () => model?.setAutoTheme(true),
-            ),
-            ElevatedButton(
-              child: const Text("CONNECT TO DEV SERVER"),
-              style: buttonStyle,
-              onPressed: () {
-                model?.vehicle.ip = Constants.devIp;
-                model?.vehicle.reconnect();
-              },
             ),
 
             model?.speedingAlertsEnabled == false ? 

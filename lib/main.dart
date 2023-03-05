@@ -22,6 +22,7 @@ class _AppState extends State<App> {
   final cron = Cron();
   late ScheduledTask themeTask;
   late ScheduledTask timeTask;
+  late ScheduledTask fullscreenTask;
   
   @override
   void initState() {
@@ -29,7 +30,7 @@ class _AppState extends State<App> {
     model.init();
     imageCache.clear();
 
-    // Update time on every minute.
+    fullscreenTask = cron.schedule(Schedule.parse('* * * * * *'), model.fullscreen);
     timeTask = cron.schedule(Schedule.parse('*/1 * * * *'), model.updateTime);
     themeTask = cron.schedule(Schedule.parse('*/5 * * * * *'), model.updateTheme);
 
@@ -41,6 +42,7 @@ class _AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
+    model.fullscreen();
     model.updateTheme();
     model.updateTime();
     return PropertyChangeProvider<AppModel, String>( //ChangeNotifierProvider
@@ -48,14 +50,12 @@ class _AppState extends State<App> {
       child: PropertyChangeConsumer<AppModel, String>(
         properties: const ['theme'],
         builder: (context, model, properties) {
-          // Hides the Android status and control bar.
-          SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
-          
           return MaterialApp(
             theme: model?.theme,
             initialRoute: '/',
             home: Scaffold(
               key: model?.scaffoldKey,
+              resizeToAvoidBottomInset: false,
               body: const HomePage()
             ),
             debugShowCheckedModeBanner: false
@@ -67,6 +67,7 @@ class _AppState extends State<App> {
 
   @override
   void dispose() {
+    fullscreenTask.cancel();
     timeTask.cancel();
     themeTask.cancel();
     super.dispose();

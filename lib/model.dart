@@ -497,6 +497,11 @@ class AppModel extends PropertyChangeNotifier<String> {
     }
   }
 
+  void fullscreen() {
+    // Hides the Android status and control bar.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
+  }
+
   void updateTheme() {
     //debugPrint(_luxValue.toString());
     if (_autoTheme) {

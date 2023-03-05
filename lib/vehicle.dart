@@ -24,7 +24,7 @@ class Vehicle {
 
   late PerformanceTracking pTracking;
 
-  String ip = Constants.prodIp;
+  String host = Constants.defaultHost;
 
   //Street? street;
   int? speedLimit;
@@ -175,10 +175,10 @@ class Vehicle {
 
     try {
       final ws = await WebSocket
-        .connect('ws://$ip/ws')
+        .connect('ws://$host/ws')
         .timeout(const Duration(seconds: 5));
 
-      ws.pingInterval = const Duration(seconds: 1);
+      ws.pingInterval = const Duration(seconds: 2);
 
       debugPrint('[websocket] connected!');
       socket = IOWebSocketChannel(ws);

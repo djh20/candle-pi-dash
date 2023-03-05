@@ -3,8 +3,7 @@ class Constants {
   // This class is not meant to be instantiated or extended; this constructor prevents instantiation and extension.
   Constants._();
 
-  static const String prodIp = "192.168.1.1";
-  static const String devIp = "10.1.1.21";
+  static const String defaultHost = "192.168.1.1";
 
   static const List<String> gearSymbols = ['P', 'P', 'R', 'N', ''];
   //static const List<String> gearLabels = ['', '', '', '', 'km/h'];
