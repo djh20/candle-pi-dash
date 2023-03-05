@@ -31,6 +31,7 @@ dependencies:
   cron: ^0.4.0
   flutter:
     sdk: flutter
+  flutter_bluetooth_serial: ^0.4.0
   flutter_map: ^0.14.0
   intl: ^0.17.0
   latlong2: ^0.8.1
@@ -38,7 +39,6 @@ dependencies:
   package_info_plus: ^1.4.3+1
   property_change_notifier: ^0.3.0
   wakelock: ^0.6.1
-  web_socket_channel: ^2.1.0
 
 dev_dependencies:
   flutter_test:
