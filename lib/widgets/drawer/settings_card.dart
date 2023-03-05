@@ -19,16 +19,6 @@ class SettingsCardContent extends StatelessWidget {
       builder: (context, model, properties) {
         return Column(
           children: [
-            TextFormField(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: Constants.defaultHost,
-              ),
-              textAlign: TextAlign.center,
-              initialValue: model?.vehicle.host,
-              onFieldSubmitted: (value) => model?.vehicle.host = value
-            ),
-            
             ElevatedButton(
               child: const Text("LIGHT THEME"),
               style: buttonStyle,
@@ -70,6 +60,12 @@ class SettingsCardContent extends StatelessWidget {
                   model?.notify("speedingAlertsEnabled");
                 }
               ),
+            
+            ElevatedButton(
+              child: const Text("DISCONNECT"),
+              style: buttonStyle,
+              onPressed: () => model?.vehicle.close(),
+            ),
 
             const SizedBox(height: 5),
             Text("v${model?.packageInfo.version ?? ""}")
