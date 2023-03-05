@@ -11,7 +11,7 @@ class ConnectingCluster extends StatelessWidget {
         Stack(
           alignment: Alignment.center,
           children: [
-            const Icon(Icons.cable, size: 38),
+            const Icon(Icons.bluetooth, size: 38),
             Transform.scale(
               scale: 1.3,
               child: const CircularProgressIndicator(strokeWidth: 2)
