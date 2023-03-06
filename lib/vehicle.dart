@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:candle_dash/can.dart';
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
 import 'package:candle_dash/utils.dart';
@@ -15,11 +16,12 @@ FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
 class Vehicle {
   late AppModel model;
 
-  var metrics = <String, dynamic>{};
+  late List<Topic> topics;
+  var metrics = <String, Metric>{};
 
   bool connected = false;
   bool connecting = false;
-  //bool initialized = false;
+  bool initialized = false;
 
   late PerformanceTracking pTracking;
 
@@ -36,30 +38,63 @@ class Vehicle {
   BluetoothConnection? btConnection;
 
   String buffer = "";
-  bool waitingForReply = false;
+  //bool waitingForReply = false;
+  Completer? sendCompleter;
   String? lastCommand;
-  List<String> commandQueue = [];
+  Topic? currentTopic;
+  //List<String> commandQueue = [];
 
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
+
+    topics = [
+      /*
+      Topic(
+        id: 0x174,
+        name: "VCM",
+        intervalMs: 10,
+        highPriority: true
+      ),
+      */
+      Topic(
+        id: 0x284,
+        name: "ABS",
+        intervalMs: 25,
+        highPriority: true
+      )
+    ];
+    
+    registerMetrics([
+      Metric(id: "powered"),
+      Metric(id: "gear"),
+      Metric(id: "speed")
+    ]);
+  }
+
+  void registerMetrics(List<Metric> metrics) {
+    for (var metric in metrics) {
+      metric.onUpdate = metricUpdated;
+      this.metrics[metric.id] = metric;
+      debugPrint('Registered metric: ${metric.id}');
+    }
   }
 
   dynamic getMetric(String id) {
-    return metrics[id] ?? 0;
+    return metrics[id]?.value ?? 0;
   }
 
   bool getMetricBool(String id) {
-    return metrics[id] == 1 ? true : false;
+    return metrics[id]?.value == 1 ? true : false;
   }
 
   double getMetricDouble(String id) {
     // Ensures the value is a double, not a int.
-    return (metrics[id] ?? 0) + .0;
+    return (metrics[id]?.value ?? 0) + .0;
   }
 
-  void metricsUpdated(List<String> ids) {
-    if (ids.contains("powered")) {
-      if (metrics["powered"] == 1) {
+  void metricUpdated(Metric metric) {
+    if (metric.id == 'powered') {
+      if (metric.value == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
         model.showAlert("experimental");
@@ -86,8 +121,9 @@ class Vehicle {
         // Clear any cached data.
         rootBundle.clear();
       }
-    } else if (ids.contains("speed")) {
-      final double speed = metrics["speed"] / 1;
+
+    } else if (metric.id == 'speed') {
+      final double speed = metric.value;
       pTracking.update(speed);
 
       final bool speeding = 
@@ -112,16 +148,16 @@ class Vehicle {
         model.speedingStartTime = null;
       }
       
-    } else if (ids.contains("fan_speed") && metrics["fan_speed"] > 0) {
+    } else if (metric.id == 'fan_speed' && metric.value > 0) {
       model.showAlert("cc_on");
     
-    } else if (ids.contains("range")) {
-      int range = metrics["range"];
+    } else if (metric.id == 'range') {
+      int range = metric.value;
       if (range > 0 && range <= 10) model.showAlert("low_range");
 
-    } else if (ids.contains("gps_lat") || ids.contains("gps_lng")) {
-      double lat = metrics["gps_lat"];
-      double lng = metrics["gps_lng"];
+    } else if (metric.id == 'gps_lat' || metric.id == 'gps_lng') {
+      double lat = metrics["gps_lat"]?.value;
+      double lng = metrics["gps_lng"]?.value;
 
       const distance = Distance();
       final oldPos = position;
@@ -147,60 +183,36 @@ class Vehicle {
 
       position = newPos;
 
-    } else if (ids.contains("gps_lock") && metrics["gps_lock"] == 0) {
+    } else if (metric.id == 'gps_lock' && metric.value == 0) {
       speedLimit = null;
       displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
     }
-   
-    for (var id in ids) {
-      model.notify(id);
-    }
+    
+    model.notify(metric.id);
   }
 
-  void process(Uint8List data) {
-    /*
-    final decodedData = jsonDecode(data);
-    List<String> updatedMetrics = [];
-    
-    decodedData.forEach((id, value) {
-      if (metrics[id] != value) {
-        metrics[id] = value;
-        updatedMetrics.add(id);
-      }
-    });
-
-    metricsUpdated(updatedMetrics);
-    */
+  void processIncomingData(Uint8List data) {
     for (var charCode in data) {
       if (charCode != 13) {
         buffer += String.fromCharCode(charCode);
 
       } else if (buffer.isNotEmpty) {
         String msg = buffer.replaceAll('>', '');
-        //debugPrint("[bluetooth] RX: $msg");
+        debugPrint("RX: $msg");
 
-        if (lastCommand == "ATMA" && msg.length == 8*2) {
+        if (currentTopic != null) {
           RegExp exp = RegExp(r'.{2}');
           Iterable<Match> matches = exp.allMatches(msg);
           var frameData = 
             matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-            
-          debugPrint('$frameData');
           
-          double frontRightSpeed = ((frameData[0] << 8) | frameData[1]) / 208;
-          double frontLeftSpeed = ((frameData[2] << 8) | frameData[3]) / 208;
-
-          double speed = (frontRightSpeed + frontLeftSpeed) / 2;
-          if (metrics['speed'] != speed) {
-            metrics['speed'] = speed;
-            metricsUpdated(['speed']);
-          }
+          processFrame(currentTopic!, frameData);
         }
 
         if (msg != lastCommand) { // Ignore echo
-          waitingForReply = false;
-          processQueue();
+          sendCompleter?.complete();
+          sendCompleter = null;
         }
 
         buffer = "";
@@ -208,26 +220,65 @@ class Vehicle {
     }
   }
 
-  void sendCommand(String command) {
-    command = command.replaceAll(' ', '').replaceAll('>', '');
-    lastCommand = command;
-    debugPrint("[bluetooth] TX: $command");
-    btConnection?.output.add(ascii.encode('$command\r'));
+  void processFrame(Topic topic, List<int> data) {
+    if (topic.id == 0x174) {
+      int gear = 0;
+
+      switch (data[3]) {
+        case 170: // Park/Neutral
+          gear = 1;
+          break;
+        
+        case 187: // Drive
+          gear = 4;
+          break;
+
+        case 153: // Reverse
+          gear = 2;
+          break;
+      }
+
+      metrics['gear']?.setValue(gear);
+
+    } else if (topic.id == 0x284) {
+      double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;
+      double frontLeftSpeed = ((data[2] << 8) | data[3]) / 208;
+
+      double speed = (frontRightSpeed + frontLeftSpeed) / 2;
+      metrics['speed']?.setValue(speed);
+    }
   }
 
-  void queueCommand(String command) {
+  Future<void> sendCommand(String command, {bool waitForResponse = true}) async {
+    debugPrint("TX: $command");
+
+    command = command.replaceAll(' ', '');
+    lastCommand = command;
+    
+    btConnection?.output.add(ascii.encode('$command\r'));
+    
+    if (waitForResponse) {
+      sendCompleter = Completer<void>();
+      return sendCompleter!.future;
+    }
+  }
+
+  /*
+  void queueCommand(String command, {bool waitForResponse = true}) {
     commandQueue.add(command);
     processQueue();
   }
+  */
 
+  /*
   void processQueue() {
-    if (commandQueue.isEmpty || waitingForReply) return;
+    if (commandQueue.isEmpty) return;
 
     String command = commandQueue.first;
     commandQueue.removeAt(0);
-    waitingForReply = true;
     sendCommand(command);
   }
+  */
 
   void connect() async {
     if (connected || connecting) return;
@@ -248,7 +299,7 @@ class Vehicle {
         if (connection.isConnected) {
           connected = true;
           btConnection = connection;
-          connection.input?.listen(process);
+          connection.input?.listen(processIncomingData);
         }
 
       } catch (exception) {
@@ -261,20 +312,24 @@ class Vehicle {
     if (connected) {
       debugPrint('[bluetooth] connected!');
       model.notify('connected');
-      queueCommand("AT Z");
-      queueCommand("AT E0");
-      queueCommand("AT SP6");
-      queueCommand("AT CAF0");
-      queueCommand("AT S0");
-      queueCommand("AT CRA 284");
-      queueCommand("AT MA");
 
-      metrics['powered'] = 1;
-      metrics['gear'] = 4;
-      metrics['speed'] = 99;
-
-      metricsUpdated(['powered', 'gear', 'speed']);
+      metrics['powered']?.setValue(1);
+      metrics['gear']?.setValue(4);
+      metrics['speed']?.setValue(99);
       
+      //Future.delayed(const Duration(milliseconds: 500), () async {
+      await sendCommand("AT Z");
+      await sendCommand("AT E0");
+      await sendCommand("AT SP6");
+      await sendCommand("AT CAF0");
+      await sendCommand("AT S0");
+      initialized = true;
+      
+      await sendCommand("AT CRA 284");
+      await sendCommand("AT MA", waitForResponse: false);
+      currentTopic = topics.first;
+      //});
+
     } else {
       debugPrint('[bluetooth] connection failed!');
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -283,17 +338,22 @@ class Vehicle {
     }
   }
 
-  void close() {
+  void close() async {
     if (!connected) return;
 
+    currentTopic = null;
+    await sendCommand("AT MA");
+    await sendCommand("AT Z");
+
+    initialized = false;
     connected = false;
-    sendCommand("AT MA");
+
     btConnection?.close();
     btConnection = null;
-    
-    waitingForReply = false;
-    commandQueue.clear();
-    metrics.clear();
+    sendCompleter = null;
+
+    //commandQueue.clear();
+    //metrics.clear();
 
     debugPrint('[bluetooth] closed');
 
