@@ -72,6 +72,8 @@ class AppModel extends PropertyChangeNotifier<String> {
   // Initally set to 100 so it starts as light mode.
   int _luxValue = 100;
 
+  List<String> logs = [];
+
   final PageController hPageController = PageController(
     initialPage: 0,
     keepPage: true
@@ -521,6 +523,17 @@ class AppModel extends PropertyChangeNotifier<String> {
     time = parts[0];
     timeUnit = parts[1].toLowerCase();
     notify('time');
+  }
+
+  void log(String msg) {
+    debugPrint(msg);
+    logs.add(msg);
+    notify("logs");
+  }
+
+  void clearLogs() {
+    logs.clear();
+    notify("logs");
   }
 
   void notify(String? property) => notifyListeners(property);

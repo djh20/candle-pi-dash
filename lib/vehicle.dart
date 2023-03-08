@@ -38,28 +38,30 @@ class Vehicle {
   BluetoothConnection? btConnection;
 
   String buffer = "";
-  //bool waitingForReply = false;
-  Completer? sendCompleter;
+  bool waitingForResponse = false;
+  Completer<String>? responseCompleter;
   String? lastCommand;
   Topic? currentTopic;
+  int? currentTopicIndex;
+  Timer? topicTimer;
   //List<String> commandQueue = [];
 
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
     topics = [
-      /*
-      Topic(
-        id: 0x174,
-        name: "VCM",
-        intervalMs: 10,
-        highPriority: true
-      ),
-      */
       Topic(
         id: 0x284,
         name: "ABS",
-        intervalMs: 25,
+        bytes: 8,
+        interval: const Duration(milliseconds: 25),
+        highPriority: true
+      ),
+      Topic(
+        id: 0x174,
+        name: "VCM",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10),
         highPriority: true
       )
     ];
@@ -67,7 +69,7 @@ class Vehicle {
     registerMetrics([
       Metric(id: "powered"),
       Metric(id: "gear"),
-      Metric(id: "speed")
+      Metric(id: "speed", defaultValue: 0.0)
     ]);
   }
 
@@ -75,7 +77,7 @@ class Vehicle {
     for (var metric in metrics) {
       metric.onUpdate = metricUpdated;
       this.metrics[metric.id] = metric;
-      debugPrint('Registered metric: ${metric.id}');
+      model.log('Registered metric: ${metric.id}');
     }
   }
 
@@ -199,20 +201,32 @@ class Vehicle {
 
       } else if (buffer.isNotEmpty) {
         String msg = buffer.replaceAll('>', '');
-        debugPrint("RX: $msg");
+        model.log("RX: $msg [${currentTopic?.name ?? "??"}]");
 
-        if (currentTopic != null) {
+        if (currentTopic != null && msg.length == currentTopic!.bytes*2) {
           RegExp exp = RegExp(r'.{2}');
           Iterable<Match> matches = exp.allMatches(msg);
           var frameData = 
             matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
           
           processFrame(currentTopic!, frameData);
+
+          if (topicTimer != null) {
+            topicTimer?.cancel();
+            topicTimer = null;
+            nextTopic();
+          }
         }
 
-        if (msg != lastCommand) { // Ignore echo
-          sendCompleter?.complete();
-          sendCompleter = null;
+        if (msg != lastCommand && waitingForResponse) { // Ignore echo
+          waitingForResponse = false;
+
+          // Store response for future.
+          String response = buffer;
+
+          responseCompleter?.complete(
+            Future.delayed(const Duration(milliseconds: 1000), () => response)
+          );
         }
 
         buffer = "";
@@ -223,6 +237,7 @@ class Vehicle {
   void processFrame(Topic topic, List<int> data) {
     if (topic.id == 0x174) {
       int gear = 0;
+      model.log('Gear Value: ${data[3]}');
 
       switch (data[3]) {
         case 170: // Park/Neutral
@@ -249,8 +264,8 @@ class Vehicle {
     }
   }
 
-  Future<void> sendCommand(String command, {bool waitForResponse = true}) async {
-    debugPrint("TX: $command");
+  Future<String> sendCommand(String command, {bool waitForResponse = true}) async {
+    model.log("TX: $command");
 
     command = command.replaceAll(' ', '');
     lastCommand = command;
@@ -258,27 +273,40 @@ class Vehicle {
     btConnection?.output.add(ascii.encode('$command\r'));
     
     if (waitForResponse) {
-      sendCompleter = Completer<void>();
-      return sendCompleter!.future;
+      responseCompleter = Completer<String>();
+      waitingForResponse = true;
+      return responseCompleter!.future;
     }
+    
+    return Future.delayed(const Duration(milliseconds: 25), () => "");
   }
 
-  /*
-  void queueCommand(String command, {bool waitForResponse = true}) {
-    commandQueue.add(command);
-    processQueue();
-  }
-  */
+  Future<void> nextTopic() async {
+    if (!connected) return;
 
-  /*
-  void processQueue() {
-    if (commandQueue.isEmpty) return;
+    if (currentTopic != null) {
+      currentTopic = null;
+      await sendCommand("AT MA");
+    }
+    
+    currentTopicIndex ??= 0;
+    currentTopicIndex = currentTopicIndex! + 1;
 
-    String command = commandQueue.first;
-    commandQueue.removeAt(0);
-    sendCommand(command);
+    if (currentTopicIndex! >= topics.length) {
+      currentTopicIndex = 0;
+    }
+
+    Topic topic = topics[currentTopicIndex!];
+    String idString = topic.id.toRadixString(16);
+    
+    await sendCommand('AT CRA $idString');
+    await sendCommand("AT MA", waitForResponse: false);
+    currentTopic = topic;
+
+    // 1 second timeout
+    // TODO: Use topic.interval instead
+    topicTimer = Timer(const Duration(milliseconds: 1000), nextTopic);
   }
-  */
 
   void connect() async {
     if (connected || connecting) return;
@@ -292,7 +320,7 @@ class Vehicle {
 
     if (btAddress != null) {
       connecting = true;
-      debugPrint('[bluetooth] connecting to $btAddress');
+      model.log('Connecting to $btAddress');
 
       try {
         var connection = await BluetoothConnection.toAddress(btAddress);
@@ -310,28 +338,28 @@ class Vehicle {
     }
 
     if (connected) {
-      debugPrint('[bluetooth] connected!');
-      model.notify('connected');
+      model.log('Connected!');
 
       metrics['powered']?.setValue(1);
-      metrics['gear']?.setValue(4);
-      metrics['speed']?.setValue(99);
+      //metrics['gear']?.setValue(4);
+      //metrics['speed']?.setValue(99.0);
       
-      //Future.delayed(const Duration(milliseconds: 500), () async {
-      await sendCommand("AT Z");
-      await sendCommand("AT E0");
-      await sendCommand("AT SP6");
-      await sendCommand("AT CAF0");
-      await sendCommand("AT S0");
-      initialized = true;
-      
-      await sendCommand("AT CRA 284");
-      await sendCommand("AT MA", waitForResponse: false);
-      currentTopic = topics.first;
-      //});
+      Future.delayed(const Duration(milliseconds: 50), () async {
+        model.log('Initializing...');
+        await sendCommand("AT Z");
+        await sendCommand("AT E0");
+        await sendCommand("AT SP6");
+        await sendCommand("AT CAF0");
+        await sendCommand("AT S0");
+        initialized = true;
+        model.log("Initialized!");
+        
+        await nextTopic();
+      });
 
+      model.notify('connected');
     } else {
-      debugPrint('[bluetooth] connection failed!');
+      model.log('Connection failed!');
       Future.delayed(const Duration(milliseconds: 500), () {
         reconnect();
       });
@@ -342,22 +370,22 @@ class Vehicle {
     if (!connected) return;
 
     currentTopic = null;
+    initialized = false;
+    connected = false;
+    model.notify('connected');
+
     await sendCommand("AT MA");
     await sendCommand("AT Z");
 
-    initialized = false;
-    connected = false;
-
     btConnection?.close();
+    btConnection?.dispose();
     btConnection = null;
-    sendCompleter = null;
+    responseCompleter = null;
 
     //commandQueue.clear();
     //metrics.clear();
 
-    debugPrint('[bluetooth] closed');
-
-    model.notify('connected');
+    model.log('Disconnected!');
   }
 
   void reconnect() {

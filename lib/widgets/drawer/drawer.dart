@@ -3,6 +3,7 @@ import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
 import 'package:candle_dash/widgets/drawer/card.dart';
 import 'package:candle_dash/widgets/drawer/insights_card.dart';
+import 'package:candle_dash/widgets/drawer/logs_card.dart';
 import 'package:candle_dash/widgets/drawer/metrics_card.dart';
 import 'package:candle_dash/widgets/drawer/navigation_card.dart';
 import 'package:candle_dash/widgets/drawer/performance_card.dart';
@@ -72,6 +73,13 @@ class SideDrawer extends StatelessWidget {
                 icon: Icons.data_usage_rounded,
                 children: [
                   MetricsCardContent()
+                ],
+              ),
+              DrawerCard(
+                title: 'Logs',
+                icon: Icons.list,
+                children: [
+                  LogsCardContent()
                 ],
               ),
             ],

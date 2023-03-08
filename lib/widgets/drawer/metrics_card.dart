@@ -15,11 +15,11 @@ class MetricsCardContent extends StatelessWidget {
         final metrics = model?.vehicle.metrics;
 
         if (metrics != null && metrics.isNotEmpty) {
-          metrics.forEach((key, value) {
+          metrics.forEach((key, metric) {
             items.add(
               MetricDisplay(
                 name: key, 
-                value: value.toString()
+                value: metric.value.toString()
               )
             );
           });

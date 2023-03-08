@@ -1,31 +1,34 @@
 class Topic {
   final int id;
   final String? name;
-  final int intervalMs;
+  final int bytes;
+  final Duration interval;
   final bool highPriority;
-  //final List<Metric> metrics;
 
   Topic({
     required this.id,
     this.name,
-    required this.intervalMs,
+    required this.bytes,
+    required this.interval,
     this.highPriority = false
-    //this.metrics = const []
   });
 }
 
 class Metric {
   final String id;
-  //final Function(Uint8List)? processFrame;
   Function(Metric)? onUpdate;
 
+  dynamic defaultValue;
+  
   dynamic _value = 0;
   get value => _value;
 
   Metric({
     required this.id,
-    //this.processFrame
-  });
+    this.defaultValue = 0
+  }) {
+    _value = defaultValue;
+  }
 
   void setValue(dynamic newValue) {
     if (newValue == _value) return;
