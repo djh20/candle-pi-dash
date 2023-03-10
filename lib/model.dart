@@ -526,7 +526,7 @@ class AppModel extends PropertyChangeNotifier<String> {
   }
 
   void log(String msg) {
-    debugPrint(msg);
+    //debugPrint(msg);
     logs.add(msg);
     notify("logs");
   }

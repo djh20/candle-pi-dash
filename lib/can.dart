@@ -1,5 +1,5 @@
 class Topic {
-  final int id;
+  final String id;
   final String? name;
   final int bytes;
   final Duration interval;

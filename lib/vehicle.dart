@@ -51,14 +51,14 @@ class Vehicle {
 
     topics = [
       Topic(
-        id: 0x284,
+        id: "284",
         name: "ABS",
         bytes: 8,
         interval: const Duration(milliseconds: 25),
         highPriority: true
       ),
       Topic(
-        id: 0x174,
+        id: "174",
         name: "VCM",
         bytes: 8,
         interval: const Duration(milliseconds: 10),
@@ -201,20 +201,26 @@ class Vehicle {
 
       } else if (buffer.isNotEmpty) {
         String msg = buffer.replaceAll('>', '');
-        model.log("RX: $msg [${currentTopic?.name ?? "??"}]");
+        //model.log("RX: $msg");
 
-        if (currentTopic != null && msg.length == currentTopic!.bytes*2) {
-          RegExp exp = RegExp(r'.{2}');
-          Iterable<Match> matches = exp.allMatches(msg);
-          var frameData = 
-            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-          
-          processFrame(currentTopic!, frameData);
+        for (var topic in topics) {
+          if (msg.startsWith(topic.id)) {
+            //model.log(topic.name ?? topic.id);
+            RegExp exp = RegExp(r'.{2}');
+            Iterable<Match> matches = exp.allMatches(msg.substring(topic.id.length));
+            var frameData = 
+              matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+            
+            processFrame(topic, frameData);
 
-          if (topicTimer != null) {
-            topicTimer?.cancel();
-            topicTimer = null;
-            nextTopic();
+            if (currentTopic == topic && topicTimer != null) {
+              model.log('${topic.name ?? '???'} (${topic.id})');
+              topicTimer?.cancel();
+              topicTimer = null;
+              nextTopic();
+            }
+
+            break;
           }
         }
 
@@ -223,9 +229,9 @@ class Vehicle {
 
           // Store response for future.
           String response = buffer;
-
+          
           responseCompleter?.complete(
-            Future.delayed(const Duration(milliseconds: 1000), () => response)
+            Future.delayed(const Duration(milliseconds: 50), () => response)
           );
         }
 
@@ -235,9 +241,8 @@ class Vehicle {
   }
 
   void processFrame(Topic topic, List<int> data) {
-    if (topic.id == 0x174) {
+    if (topic.id == "174") {
       int gear = 0;
-      model.log('Gear Value: ${data[3]}');
 
       switch (data[3]) {
         case 170: // Park/Neutral
@@ -253,19 +258,21 @@ class Vehicle {
           break;
       }
 
+      //model.log("GEAR: $gear");
       metrics['gear']?.setValue(gear);
 
-    } else if (topic.id == 0x284) {
+    } else if (topic.id == "284") {
       double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;
       double frontLeftSpeed = ((data[2] << 8) | data[3]) / 208;
 
       double speed = (frontRightSpeed + frontLeftSpeed) / 2;
+      //model.log("SPEED: $speed");
       metrics['speed']?.setValue(speed);
     }
   }
 
   Future<String> sendCommand(String command, {bool waitForResponse = true}) async {
-    model.log("TX: $command");
+    //model.log("TX: $command");
 
     command = command.replaceAll(' ', '');
     lastCommand = command;
@@ -278,7 +285,8 @@ class Vehicle {
       return responseCompleter!.future;
     }
     
-    return Future.delayed(const Duration(milliseconds: 25), () => "");
+    //return Future.delayed(const Duration(milliseconds: 20), () => "");
+    return Future.value("");
   }
 
   Future<void> nextTopic() async {
@@ -297,15 +305,13 @@ class Vehicle {
     }
 
     Topic topic = topics[currentTopicIndex!];
-    String idString = topic.id.toRadixString(16);
     
-    await sendCommand('AT CRA $idString');
-    await sendCommand("AT MA", waitForResponse: false);
     currentTopic = topic;
+    await sendCommand('AT CRA ${topic.id}');
 
-    // 1 second timeout
-    // TODO: Use topic.interval instead
-    topicTimer = Timer(const Duration(milliseconds: 1000), nextTopic);
+    // TODO: Use topic.interval instead: topic.interval + const Duration(milliseconds: 50)
+    topicTimer = Timer(const Duration(milliseconds: 200), nextTopic);
+    await sendCommand("AT MA", waitForResponse: false);
   }
 
   void connect() async {
@@ -351,6 +357,7 @@ class Vehicle {
         await sendCommand("AT SP6");
         await sendCommand("AT CAF0");
         await sendCommand("AT S0");
+        await sendCommand("AT H1");
         initialized = true;
         model.log("Initialized!");
         
