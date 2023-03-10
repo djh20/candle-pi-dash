@@ -18,9 +18,9 @@ class PowerBar extends StatelessWidget {
     const Color inColor = chargeColor;
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['power_output', 'powered', 'gear'],
+      properties: const ['motor_power', 'powered', 'gear'],
       builder: (context, model, properties) {
-        double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
+        double power = model?.vehicle.getMetricDouble('motor_power') ?? 0.0;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
 
         // Vehicle must not be in park to show power.

@@ -48,25 +48,38 @@ class Vehicle {
 
     topics = [
       Topic(
+        id: "174",
+        name: "VCM (SHIFTER)",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10)
+      ),
+      Topic(
+        id: "180",
+        name: "VCM (MOTOR)",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10)
+      ),
+      Topic(
         id: "284",
         name: "ABS",
         bytes: 8,
-        interval: const Duration(milliseconds: 25),
-        highPriority: true
+        interval: const Duration(milliseconds: 25)
       ),
       Topic(
-        id: "174",
-        name: "VCM",
+        id: "60D",
+        name: "BCM",
         bytes: 8,
-        interval: const Duration(milliseconds: 10),
-        highPriority: true
+        interval: const Duration(milliseconds: 100)
       )
     ];
     
     registerMetrics([
-      Metric(id: "powered"),
       Metric(id: "gear"),
-      Metric(id: "speed", defaultValue: 0.0)
+      Metric(id: "motor_power", defaultValue: 0.0),
+      Metric(id: "speed", defaultValue: 0.0),
+      Metric(id: "fl_speed", defaultValue: 0.0),
+      Metric(id: "fr_speed", defaultValue: 0.0),
+      Metric(id: "powered"),
     ]);
   }
 
@@ -258,13 +271,25 @@ class Vehicle {
       //model.log("GEAR: $gear");
       metrics['gear']?.setValue(gear);
 
+    } else if (topic.id == "180") {
+      int rawPower = (data[2] << 8) | data[3]; //  * 176.23 / 30
+      if ((rawPower & 0x8000) > 0) {
+        rawPower = -(~rawPower & 0xFFFF);
+      }
+
+      double power = (rawPower * 176.23) / 30;
+      //model.log('POWER: $power');
+      metrics['motor_power']?.setValue(power);
+
     } else if (topic.id == "284") {
       double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;
       double frontLeftSpeed = ((data[2] << 8) | data[3]) / 208;
 
       double speed = (frontRightSpeed + frontLeftSpeed) / 2;
-      //model.log("SPEED: $speed");
+      
       metrics['speed']?.setValue(speed);
+      metrics['fl_speed']?.setValue(frontLeftSpeed);
+      metrics['fr_speed']?.setValue(frontRightSpeed);
     }
   }
 

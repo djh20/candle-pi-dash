@@ -176,13 +176,13 @@ class ChargeInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const [
-        'power_output', 
+        'motor_power', 
         'remaining_charge_time', 
         'soc_percent',
         'charge_status'
       ],
       builder: (context, model, properties) {
-        final double powerOutput = model?.vehicle.getMetricDouble('power_output') ?? 0;
+        final double powerOutput = model?.vehicle.getMetricDouble('motor_power') ?? 0;
         final double powerInput = max(-powerOutput, 0);
         final double socPercent = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
         final int chargeStatus = model?.vehicle.getMetric('charge_status');

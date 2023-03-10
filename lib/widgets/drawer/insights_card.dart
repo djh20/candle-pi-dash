@@ -12,18 +12,18 @@ class InsightsCardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const [
-        'left_speed',
-        'right_speed',
+        'fl_speed',
+        'fr_speed',
         'motor_temp',
         'inverter_temp',
-        'power_output'
+        'motor_power'
       ],
       builder: (context, model, properties) {
         final double leftSpeed = 
-          model?.vehicle.getMetricDouble('left_speed') ?? 0;
+          model?.vehicle.getMetricDouble('fl_speed') ?? 0;
 
         final double rightSpeed = 
-          model?.vehicle.getMetricDouble('right_speed') ?? 0;
+          model?.vehicle.getMetricDouble('fr_speed') ?? 0;
 
         final double inverterTemp = 
           model?.vehicle.getMetricDouble('inverter_temp') ?? 0;
@@ -35,7 +35,7 @@ class InsightsCardContent extends StatelessWidget {
           model?.vehicle.getMetricDouble('battery_temp') ?? 0;
 
         final double power = 
-          model?.vehicle.getMetricDouble('power_output') ?? 0;
+          model?.vehicle.getMetricDouble('motor_power') ?? 0;
 
         final double turnBias = (leftSpeed-rightSpeed)/3;
 

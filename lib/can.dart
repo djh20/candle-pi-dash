@@ -3,14 +3,12 @@ class Topic {
   final String? name;
   final int bytes;
   final Duration interval;
-  final bool highPriority;
 
   Topic({
     required this.id,
     this.name,
     required this.bytes,
-    required this.interval,
-    this.highPriority = false
+    required this.interval
   });
 }
 
