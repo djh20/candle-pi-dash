@@ -41,9 +41,6 @@ class Vehicle {
   bool waitingForResponse = false;
   Completer<String>? responseCompleter;
   String? lastCommand;
-  Topic? currentTopic;
-  int? currentTopicIndex;
-  Timer? topicTimer;
   //List<String> commandQueue = [];
 
   Vehicle(this.model) {
@@ -203,24 +200,24 @@ class Vehicle {
         String msg = buffer.replaceAll('>', '');
         //model.log("RX: $msg");
 
-        for (var topic in topics) {
-          if (msg.startsWith(topic.id)) {
-            //model.log(topic.name ?? topic.id);
-            RegExp exp = RegExp(r'.{2}');
-            Iterable<Match> matches = exp.allMatches(msg.substring(topic.id.length));
-            var frameData = 
-              matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-            
-            processFrame(topic, frameData);
-
-            if (currentTopic == topic && topicTimer != null) {
-              model.log('${topic.name ?? '???'} (${topic.id})');
-              topicTimer?.cancel();
-              topicTimer = null;
-              nextTopic();
+        if (msg == "BUFFER FULL") {
+          monitorAll();
+          
+        } else {
+          for (var topic in topics) {
+            if (msg.startsWith(topic.id)) {
+              String frameDataStr = msg.substring(topic.id.length);
+              if (frameDataStr.length == topic.bytes * 2) {
+                RegExp exp = RegExp(r'.{2}');
+                Iterable<Match> matches = exp.allMatches(frameDataStr);
+                var frameData = 
+                  matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+                
+                processFrame(topic, frameData);
+                model.log(topic.name ?? topic.id);
+              }
+              break;
             }
-
-            break;
           }
         }
 
@@ -289,29 +286,10 @@ class Vehicle {
     return Future.value("");
   }
 
-  Future<void> nextTopic() async {
+  void monitorAll() {
     if (!connected) return;
 
-    if (currentTopic != null) {
-      currentTopic = null;
-      await sendCommand("AT MA");
-    }
-    
-    currentTopicIndex ??= 0;
-    currentTopicIndex = currentTopicIndex! + 1;
-
-    if (currentTopicIndex! >= topics.length) {
-      currentTopicIndex = 0;
-    }
-
-    Topic topic = topics[currentTopicIndex!];
-    
-    currentTopic = topic;
-    await sendCommand('AT CRA ${topic.id}');
-
-    // TODO: Use topic.interval instead: topic.interval + const Duration(milliseconds: 50)
-    topicTimer = Timer(const Duration(milliseconds: 200), nextTopic);
-    await sendCommand("AT MA", waitForResponse: false);
+    sendCommand("AT MA", waitForResponse: false);
   }
 
   void connect() async {
@@ -361,7 +339,7 @@ class Vehicle {
         initialized = true;
         model.log("Initialized!");
         
-        await nextTopic();
+        monitorAll();
       });
 
       model.notify('connected');
@@ -376,7 +354,6 @@ class Vehicle {
   void close() async {
     if (!connected) return;
 
-    currentTopic = null;
     initialized = false;
     connected = false;
     model.notify('connected');
