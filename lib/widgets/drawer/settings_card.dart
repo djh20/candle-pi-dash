@@ -9,42 +9,51 @@ class SettingsCardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonStyle = ElevatedButton.styleFrom(
+    final buttonStyleOne = ElevatedButton.styleFrom(
+      elevation: 0
+    );
+
+    final buttonStyleTwo = ElevatedButton.styleFrom(
       minimumSize: const Size.fromHeight(40),
       elevation: 0
     );
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['speedingAlertsEnabled'],
+      properties: const ['speedingAlertsEnabled', 'recording'],
       builder: (context, model, properties) {
         return Column(
           children: [
-            ElevatedButton(
-              child: const Text("LIGHT THEME"),
-              style: buttonStyle,
-              onPressed: () {
-                model?.setAutoTheme(false);
-                model?.setTheme(Themes.light);
-              },
-            ),
-            ElevatedButton(
-              child: const Text("DARK THEME"),
-              style: buttonStyle,
-              onPressed: () {
-                model?.setAutoTheme(false);
-                model?.setTheme(Themes.dark);
-              },
-            ),
-            ElevatedButton(
-              child: const Text("AUTO THEME"),
-              style: buttonStyle,
-              onPressed: () => model?.setAutoTheme(true),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton(
+                  child: const Text("LIGHT"),
+                  style: buttonStyleOne,
+                  onPressed: () {
+                    model?.setAutoTheme(false);
+                    model?.setTheme(Themes.light);
+                  },
+                ),
+                ElevatedButton(
+                  child: const Text("DARK"),
+                  style: buttonStyleOne,
+                  onPressed: () {
+                    model?.setAutoTheme(false);
+                    model?.setTheme(Themes.dark);
+                  },
+                ),
+                ElevatedButton(
+                  child: const Text("AUTO"),
+                  style: buttonStyleOne,
+                  onPressed: () => model?.setAutoTheme(true),
+                ),
+              ],
             ),
 
             model?.speedingAlertsEnabled == false ? 
               ElevatedButton(
                 child: const Text("ENABLE SPEEDING ALERTS"),
-                style: buttonStyle,
+                style: buttonStyleTwo,
                 onPressed: () {
                   model?.speedingAlertsEnabled = true;
                   model?.notify("speedingAlertsEnabled");
@@ -52,7 +61,7 @@ class SettingsCardContent extends StatelessWidget {
               ) :
               ElevatedButton(
                 child: const Text("DISABLE SPEEDING ALERTS"),
-                style: buttonStyle.copyWith(
+                style: buttonStyleTwo.copyWith(
                   backgroundColor: MaterialStateProperty.all<Color>(Colors.red)
                 ),
                 onPressed: () {
@@ -60,10 +69,30 @@ class SettingsCardContent extends StatelessWidget {
                   model?.notify("speedingAlertsEnabled");
                 }
               ),
+
+            model?.vehicle.recording == false ? 
+              ElevatedButton(
+                child: const Text("START RECORDING"),
+                style: buttonStyleTwo,
+                onPressed: () => model?.vehicle.startRecording()
+              ) :
+              ElevatedButton(
+                child: const Text("STOP RECORDING"),
+                style: buttonStyleTwo.copyWith(
+                  backgroundColor: MaterialStateProperty.all<Color>(Colors.red)
+                ),
+                onPressed: () => model?.vehicle.stopRecording()
+              ),
             
             ElevatedButton(
+              child: const Text("START DATA PLAYBACK"),
+              style: buttonStyleTwo,
+              onPressed: () => model?.vehicle.playbackData()
+            ),
+
+            ElevatedButton(
               child: const Text("DISCONNECT"),
-              style: buttonStyle,
+              style: buttonStyleTwo,
               onPressed: () => model?.vehicle.close(),
             ),
 

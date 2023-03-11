@@ -18,7 +18,7 @@ class InfoFooter extends StatelessWidget {
       properties: const [
         'range', 
         'range_at_last_charge'
-        'soc_percent', 
+        'soc', 
         'time', 
         'gps_distance',
         'gps_lock'
@@ -27,7 +27,7 @@ class InfoFooter extends StatelessWidget {
         final int range = model?.vehicle.getMetric('range');
         final int rangeAtLastCharge = model?.vehicle.getMetric('range_at_last_charge');
 
-        final double soc = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
+        final double soc = model?.vehicle.getMetricDouble('soc') ?? 0;
         
         final double gpsDistance = 
           (model?.vehicle.getMetricDouble('gps_distance') ?? 0) / 1000;
@@ -67,6 +67,7 @@ class InfoFooter extends StatelessWidget {
             ),
             
             const SizedBox(height: 5),
+            /*
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 500),
               style: TextStyle(
@@ -77,10 +78,23 @@ class InfoFooter extends StatelessWidget {
                 value: '$gpsDistanceFormatted km',
               ),
             ),
+            */
+            /*
             MetricDisplay(
               name: 'Efficiency',
               value: rangeVariationText,
               valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
+            ),
+            */
+            const MetricDisplay(
+              name: 'Travelled',
+              value: 'Disabled',
+              valueColor: Colors.grey,
+            ),
+            const MetricDisplay(
+              name: 'Efficiency',
+              value: 'Disabled',
+              valueColor: Colors.grey,
             ),
             MetricDisplay(
               name: 'Charge',

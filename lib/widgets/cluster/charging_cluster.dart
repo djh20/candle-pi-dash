@@ -63,9 +63,9 @@ class BatteryBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['soc_percent'],
+      properties: const ['soc'],
       builder: (context, model, properties) {
-        final double socPercent = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
+        final double socPercent = model?.vehicle.getMetricDouble('soc') ?? 0;
 
         return SizedBox(
           width: double.infinity,
@@ -145,10 +145,10 @@ class BatteryInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['soc_percent', 'range'],
+      properties: const ['soc', 'range'],
       builder: (context, model, properties) {
         final int range = model?.vehicle.getMetric("range");
-        final double socPercent = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
+        final double socPercent = model?.vehicle.getMetricDouble('soc') ?? 0;
         
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -178,13 +178,13 @@ class ChargeInfo extends StatelessWidget {
       properties: const [
         'motor_power', 
         'remaining_charge_time', 
-        'soc_percent',
+        'soc',
         'charge_status'
       ],
       builder: (context, model, properties) {
         final double powerOutput = model?.vehicle.getMetricDouble('motor_power') ?? 0;
         final double powerInput = max(-powerOutput, 0);
-        final double socPercent = model?.vehicle.getMetricDouble('soc_percent') ?? 0;
+        final double socPercent = model?.vehicle.getMetricDouble('soc') ?? 0;
         final int chargeStatus = model?.vehicle.getMetric('charge_status');
 
         final Duration chargeTime = Duration(

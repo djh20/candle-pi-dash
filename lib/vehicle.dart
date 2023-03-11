@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:candle_dash/can.dart';
 import 'package:candle_dash/constants.dart';
@@ -9,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock/wakelock.dart';
 
 FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
@@ -43,6 +46,10 @@ class Vehicle {
   String? lastCommand;
   //List<String> commandQueue = [];
 
+  bool recording = false;
+  int? recordingStartMs;
+  String recordedData = "";
+
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
@@ -50,36 +57,36 @@ class Vehicle {
       Topic(
         id: "174",
         name: "VCM (SHIFTER)",
-        bytes: 8,
-        interval: const Duration(milliseconds: 10)
+        bytes: 8
       ),
       Topic(
         id: "180",
         name: "VCM (MOTOR)",
-        bytes: 8,
-        interval: const Duration(milliseconds: 10)
+        bytes: 8
       ),
       Topic(
         id: "284",
         name: "ABS",
-        bytes: 8,
-        interval: const Duration(milliseconds: 25)
+        bytes: 8
       ),
       Topic(
-        id: "60D",
-        name: "BCM",
-        bytes: 8,
-        interval: const Duration(milliseconds: 100)
+        id: "5B3",
+        name: "BATTERY",
+        bytes: 8
       )
     ];
     
     registerMetrics([
+      Metric(id: "powered", timeout: const Duration(milliseconds: 1000)),
       Metric(id: "gear"),
-      Metric(id: "motor_power", defaultValue: 0.0),
       Metric(id: "speed", defaultValue: 0.0),
       Metric(id: "fl_speed", defaultValue: 0.0),
       Metric(id: "fr_speed", defaultValue: 0.0),
-      Metric(id: "powered"),
+      Metric(id: "motor_power", defaultValue: 0.0),
+      Metric(id: "soh"),
+      Metric(id: "gids"),
+      Metric(id: "soc", defaultValue: 0.0),
+      Metric(id: "range"),
     ]);
   }
 
@@ -143,7 +150,7 @@ class Vehicle {
         speed > (speedLimit! + Constants.speedingAlertThreshold);
 
       if (speeding && model.speedingAlertsEnabled) {
-        final int now = DateTime.now().millisecondsSinceEpoch;
+        final int now = millis();
 
         if (model.speedingStartTime != null) {
           final int timeSinceStartedSpeeding = now - model.speedingStartTime!;
@@ -163,6 +170,21 @@ class Vehicle {
     } else if (metric.id == 'fan_speed' && metric.value > 0) {
       model.showAlert("cc_on");
     
+    } else if (metric.id == 'gids' || metric.id == 'soh') {
+      final int gids = metrics['gids']!.value;
+      final int soh = metrics['soh']!.value;
+
+      final double energyKwh = max((gids*Constants.kwhPerGid), 0);
+      
+      // Range Calculation
+      // - Minus 1.15kWh is reserved energy that cannot be used.
+      final int range = ((energyKwh-1.15)*Constants.kmPerKwh).round();
+      metrics['range']?.setValue(range);
+
+      final double batteryCapacity = ((soh/100.0)*Constants.fullBatteryCapacity);
+      final double soc = (energyKwh/batteryCapacity)*100;
+      metrics['soc']?.setValue(soc);
+
     } else if (metric.id == 'range') {
       int range = metric.value;
       if (range > 0 && range <= 10) model.showAlert("low_range");
@@ -217,21 +239,12 @@ class Vehicle {
           monitorAll();
           
         } else {
-          for (var topic in topics) {
-            if (msg.startsWith(topic.id)) {
-              String frameDataStr = msg.substring(topic.id.length);
-              if (frameDataStr.length == topic.bytes * 2) {
-                RegExp exp = RegExp(r'.{2}');
-                Iterable<Match> matches = exp.allMatches(frameDataStr);
-                var frameData = 
-                  matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-                
-                processFrame(topic, frameData);
-                model.log(topic.name ?? topic.id);
-              }
-              break;
-            }
+          if (recording) {
+            int ms = millis() - recordingStartMs!;
+            recordedData += '$ms\t$msg\n';
           }
+
+          processFrame(msg);
         }
 
         if (msg != lastCommand && waitingForResponse) { // Ignore echo
@@ -250,8 +263,35 @@ class Vehicle {
     }
   }
 
-  void processFrame(Topic topic, List<int> data) {
-    if (topic.id == "174") {
+  void processFrame(String frame) {
+    for (var topic in topics) {
+      if (frame.startsWith(topic.id)) {
+        String frameDataStr = frame.substring(topic.id.length);
+        if (frameDataStr.length == topic.bytes * 2) {
+          RegExp exp = RegExp(r'.{2}');
+          Iterable<Match> matches = exp.allMatches(frameDataStr);
+          var frameData = 
+            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+          
+          processTopicData(topic, frameData);
+          model.log(topic.name ?? topic.id);
+        }
+        break;
+      }
+    }
+  }
+
+  void processTopicData(Topic topic, List<int> data) {
+    if (topic.id == "002") {
+      /*
+      int rawAngle = (data[1] << 8) | data[0];
+      if ((rawAngle & 0x8000) > 0) {
+        rawAngle = -(~rawAngle & 0xFFFF);
+      }
+      metrics['steering_angle']?.setValue(rawAngle / 10);
+      */
+
+    } else if (topic.id == "174") {
       int gear = 0;
 
       switch (data[3]) {
@@ -268,17 +308,17 @@ class Vehicle {
           break;
       }
 
-      //model.log("GEAR: $gear");
+      metrics['powered']?.setValue(1);
       metrics['gear']?.setValue(gear);
 
     } else if (topic.id == "180") {
-      int rawPower = (data[2] << 8) | data[3]; //  * 176.23 / 30
+      int rawPower = (data[2] << 8) | data[3];
       if ((rawPower & 0x8000) > 0) {
         rawPower = -(~rawPower & 0xFFFF);
       }
 
-      double power = (rawPower * 176.23) / 30;
-      //model.log('POWER: $power');
+      // TODO: Make this more accurate.
+      double power = rawPower / 200;
       metrics['motor_power']?.setValue(power);
 
     } else if (topic.id == "284") {
@@ -290,6 +330,10 @@ class Vehicle {
       metrics['speed']?.setValue(speed);
       metrics['fl_speed']?.setValue(frontLeftSpeed);
       metrics['fr_speed']?.setValue(frontRightSpeed);
+
+    } else if (topic.id == "5B3") {
+      metrics['gids']?.setValue(data[5]);
+      metrics['soh']?.setValue(data[1] >> 1);
     }
   }
 
@@ -320,7 +364,7 @@ class Vehicle {
   void connect() async {
     if (connected || connecting) return;
 
-    if (btAddress == null) {
+    if (btAddress == null && await bluetoothSerial.isAvailable == true) {
       var bondedDevices = await bluetoothSerial.getBondedDevices();
       if (bondedDevices.isNotEmpty) {
         btAddress = bondedDevices[0].address;
@@ -346,12 +390,8 @@ class Vehicle {
       connecting = false;
     }
 
-    if (connected) {
+    if (btConnection != null && connected) {
       model.log('Connected!');
-
-      metrics['powered']?.setValue(1);
-      //metrics['gear']?.setValue(4);
-      //metrics['speed']?.setValue(99.0);
       
       Future.delayed(const Duration(milliseconds: 50), () async {
         model.log('Initializing...');
@@ -361,6 +401,8 @@ class Vehicle {
         await sendCommand("AT CAF0");
         await sendCommand("AT S0");
         await sendCommand("AT H1");
+        await sendCommand("AT CF 000");
+        await sendCommand("AT CM 008");
         initialized = true;
         model.log("Initialized!");
         
@@ -370,9 +412,7 @@ class Vehicle {
       model.notify('connected');
     } else {
       model.log('Connection failed!');
-      Future.delayed(const Duration(milliseconds: 500), () {
-        reconnect();
-      });
+      Future.delayed(const Duration(milliseconds: 500), connect);
     }
   }
 
@@ -402,6 +442,59 @@ class Vehicle {
 
     close(); connect();
   }
+
+  File getDataFile() => File('/storage/emulated/0/Download/data.txt');
+
+  Future<void> startRecording() async {
+    //if (!await Permission.manageExternalStorage.request().isGranted) return;
+
+    recordedData = "";
+    recordingStartMs = millis();
+    recording = true;
+    model.notify('recording');
+  }
+
+  Future<void> stopRecording() async {
+    recording = false;
+    model.notify('recording');
+
+    final file = getDataFile();
+    await file.writeAsString(recordedData);
+    model.log('Saved data to ${file.path}');
+  }
+
+  Future<void> playbackData() async {
+    //if (!await Permission.manageExternalStorage.request().isGranted) return;
+    
+    if (!connected) {
+      connected = true;
+      model.notify('connected');
+    }
+
+    int startMs = millis();
+
+    final file = getDataFile();
+    Stream<String> lines = file.openRead()
+      .transform(utf8.decoder)       // Decode bytes to UTF-8.
+      .transform(const LineSplitter());    // Convert stream to individual lines.
+
+    await for (var line in lines) {
+      //print('$line: ${line.length} characters');
+      List<String> sections = line.trim().split('\t');
+      int ms = int.parse(sections[0]);
+      String frame = sections[1];
+
+      var msUntilFrame = ms - (millis() - startMs);
+
+      if (msUntilFrame > 0) {
+        await Future.delayed(Duration(milliseconds: msUntilFrame));
+      }
+
+      processFrame(frame);
+    }
+  }
+
+  int millis() => DateTime.now().millisecondsSinceEpoch;
 }
 
 class PerformanceTracking {

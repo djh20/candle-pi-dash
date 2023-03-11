@@ -16,4 +16,8 @@ class Constants {
 
   static const int speedingAlertTime = 15 * 1000; // 15 seconds
   static const int speedingAlertThreshold = 10; // 10 km/h over speed limit
+
+  static const double kwhPerGid = 0.08;
+  static const double kmPerKwh = 6.2;
+  static const double fullBatteryCapacity = 24.0;
 }
