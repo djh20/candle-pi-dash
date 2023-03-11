@@ -5,7 +5,7 @@ class Constants {
 
   static const String defaultHost = "192.168.1.1";
 
-  static const List<String> gearSymbols = ['P', 'P', 'R', 'N', ''];
+  static const List<String> gearSymbols = ['P', 'R', 'N', ''];
   //static const List<String> gearLabels = ['', '', '', '', 'km/h'];
 
   static const double drawerWidth = 260.0;

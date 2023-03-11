@@ -55,13 +55,13 @@ class Vehicle {
 
     topics = [
       Topic(
-        id: "174",
-        name: "VCM (SHIFTER)",
-        bytes: 8
+        id: "421", // "174",
+        name: "SHIFTER",
+        bytes: 3 //8
       ),
       Topic(
         id: "180",
-        name: "VCM (MOTOR)",
+        name: "MOTOR",
         bytes: 8
       ),
       Topic(
@@ -77,8 +77,13 @@ class Vehicle {
     ];
     
     registerMetrics([
-      Metric(id: "powered", timeout: const Duration(milliseconds: 1000)),
+      Metric(
+        id: "powered", 
+        defaultValue: false, 
+        timeout: const Duration(milliseconds: 500)
+      ),
       Metric(id: "gear"),
+      Metric(id: "eco", defaultValue: false),
       Metric(id: "speed", defaultValue: 0.0),
       Metric(id: "fl_speed", defaultValue: 0.0),
       Metric(id: "fr_speed", defaultValue: 0.0),
@@ -98,22 +103,9 @@ class Vehicle {
     }
   }
 
-  dynamic getMetric(String id) {
-    return metrics[id]?.value ?? 0;
-  }
-
-  bool getMetricBool(String id) {
-    return metrics[id]?.value == 1 ? true : false;
-  }
-
-  double getMetricDouble(String id) {
-    // Ensures the value is a double, not a int.
-    return (metrics[id]?.value ?? 0) + .0;
-  }
-
   void metricUpdated(Metric metric) {
     if (metric.id == 'powered') {
-      if (metric.value == 1) {
+      if (metric.value == true) {
         Wakelock.enable();
         model.alertsEnabled = true;
         model.showAlert("experimental");
@@ -290,8 +282,9 @@ class Vehicle {
       }
       metrics['steering_angle']?.setValue(rawAngle / 10);
       */
-
+    
     } else if (topic.id == "174") {
+      /*
       int gear = 0;
 
       switch (data[3]) {
@@ -310,6 +303,36 @@ class Vehicle {
 
       metrics['powered']?.setValue(1);
       metrics['gear']?.setValue(gear);
+      */
+    } else if (topic.id == "421") {
+      bool eco = false;
+      int gear = 0;
+
+      switch (data[0]) {
+        case 8: // Park
+          gear = 0;
+          break;
+
+        case 16: // Reverse
+          gear = 1;
+          break;
+        
+        case 24: // Neutral
+          gear = 2;
+          break;
+
+        case 32: // Drive
+          gear = 3;
+          break;
+
+        case 38: // Eco
+          gear = 3;
+          eco = true;
+          break;
+      }
+
+      metrics['gear']?.setValue(gear);
+      metrics['eco']?.setValue(eco);
 
     } else if (topic.id == "180") {
       int rawPower = (data[2] << 8) | data[3];
@@ -320,6 +343,7 @@ class Vehicle {
       // TODO: Make this more accurate.
       double power = rawPower / 200;
       metrics['motor_power']?.setValue(power);
+      metrics['powered']?.setValue(true);
 
     } else if (topic.id == "284") {
       double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;

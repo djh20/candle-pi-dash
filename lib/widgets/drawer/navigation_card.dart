@@ -14,7 +14,7 @@ class NavigationCardContent extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ["gps_lock"],
       builder: (context, model, properties) {
-        final bool gpsLocked = model?.vehicle.getMetricBool("gps_lock") ?? false;
+        final bool gpsLocked = model?.vehicle.metrics['gps_lock']?.value ?? false;
 
         return gpsLocked ? 
         const NavigationCardMap() : 

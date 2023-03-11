@@ -20,22 +20,22 @@ class InsightsCardContent extends StatelessWidget {
       ],
       builder: (context, model, properties) {
         final double leftSpeed = 
-          model?.vehicle.getMetricDouble('fl_speed') ?? 0;
+          model?.vehicle.metrics['fl_speed']?.value ?? 0;
 
         final double rightSpeed = 
-          model?.vehicle.getMetricDouble('fr_speed') ?? 0;
+          model?.vehicle.metrics['fr_speed']?.value ?? 0;
 
         final double inverterTemp = 
-          model?.vehicle.getMetricDouble('inverter_temp') ?? 0;
+          model?.vehicle.metrics['inverter_temp']?.value ?? 0;
 
         final double motorTemp = 
-          model?.vehicle.getMetricDouble('motor_temp') ?? 0;
+          model?.vehicle.metrics['motor_temp']?.value ?? 0;
 
         final double batteryTemp = 
-          model?.vehicle.getMetricDouble('battery_temp') ?? 0;
+          model?.vehicle.metrics['battery_temp']?.value ?? 0;
 
         final double power = 
-          model?.vehicle.getMetricDouble('motor_power') ?? 0;
+          model?.vehicle.metrics['motor_power']?.value ?? 0;
 
         final double turnBias = (leftSpeed-rightSpeed)/3;
 

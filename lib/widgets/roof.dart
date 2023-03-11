@@ -20,13 +20,12 @@ class Roof extends StatelessWidget {
       ],
       builder: (context, model, properties) {
         final bool connected = model?.vehicle.connected ?? false;
-        final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
+        final bool eco = model?.vehicle.metrics['eco']?.value ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
-        //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
-        final int gear = model?.vehicle.getMetric('gear') ?? 0;
-        final bool parked = (gear <= 1);
+        final int gear = model?.vehicle.metrics['gear']?.value ?? 0;
+        final bool parked = (gear == 0);
 
-        final int fanSpeed = model?.vehicle.getMetric('fan_speed') ?? 0;
+        final int fanSpeed = model?.vehicle.metrics['fan_speed']?.value ?? 0;
         final int fanSpeedPercent = ((fanSpeed / 7) * 100).round();
 
         return AnimatedOpacity(

@@ -24,17 +24,17 @@ class InfoFooter extends StatelessWidget {
         'gps_lock'
       ],
       builder: (context, model, properties) {
-        final int range = model?.vehicle.getMetric('range');
-        final int rangeAtLastCharge = model?.vehicle.getMetric('range_at_last_charge');
+        final int range = model?.vehicle.metrics['range']?.value ?? 0;
+        final int rangeAtLastCharge = model?.vehicle.metrics['range_at_last_charge']?.value ?? 0;
 
-        final double soc = model?.vehicle.getMetricDouble('soc') ?? 0;
+        final double soc = model?.vehicle.metrics['soc']?.value ?? 0;
         
         final double gpsDistance = 
-          (model?.vehicle.getMetricDouble('gps_distance') ?? 0) / 1000;
+          (model?.vehicle.metrics['gps_distance']?.value ?? 0) / 1000;
 
         final String gpsDistanceFormatted = gpsDistance.toStringAsFixed(1);
 
-        final bool gpsLocked = model?.vehicle.getMetricBool('gps_lock') ?? false;
+        final bool gpsLocked = model?.vehicle.metrics['gps_lock']?.value ?? false;
 
         final IconData batteryIcon = 
           (range > 10) ? Icons.battery_full_rounded : Icons.battery_alert_rounded;

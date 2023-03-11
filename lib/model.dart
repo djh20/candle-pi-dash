@@ -237,7 +237,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     /// Only update map position if the drawer is open and on the correct
     /// page. This stops the issue where the controller errors because the
     /// map widget doesn't exist.
-    final bool gpsLocked = vehicle.getMetricBool("gps_lock");
+    final bool gpsLocked = vehicle.metrics['gps_lock']?.value ?? false;
 
     if (drawerOpen && gpsLocked && vPage == 0) {
       mapLatTween = Tween<double>(
@@ -290,7 +290,7 @@ class AppModel extends PropertyChangeNotifier<String> {
     final latRad = position.latitudeInRad;  
     final lngRad = position.longitudeInRad;
 
-    final vehicleSpeed = vehicle.getMetricDouble("speed");
+    final double vehicleSpeed = vehicle.metrics['speed']?.value ?? 0;
 
     final int totalSamples = max(vehicleSpeed.round() ~/ 4, 1);
     

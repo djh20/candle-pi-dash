@@ -17,7 +17,7 @@ class Dash extends StatelessWidget {
       properties: const ['connected', 'plugged_in', 'drawer'],
       builder: (context, model, properties) {
         final bool connected = (model?.vehicle.connected == true);
-        final bool pluggedIn = model?.vehicle.getMetricBool("plugged_in") ?? false;
+        final bool pluggedIn = model?.vehicle.metrics['plugged_in']?.value ?? false;
         
         return Stack(
           fit: StackFit.expand,
