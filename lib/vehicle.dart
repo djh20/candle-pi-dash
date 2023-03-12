@@ -426,7 +426,7 @@ class Vehicle {
         await sendCommand("AT S0");
         await sendCommand("AT H1");
         await sendCommand("AT CF 000");
-        await sendCommand("AT CM 008");
+        await sendCommand("AT CM 048");
         initialized = true;
         model.log("Initialized!");
         
