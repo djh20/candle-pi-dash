@@ -325,7 +325,7 @@ class Vehicle {
           gear = 3;
           break;
 
-        case 38: // Eco
+        case 56: // Eco
           gear = 3;
           eco = true;
           break;
