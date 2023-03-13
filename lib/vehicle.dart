@@ -396,7 +396,7 @@ class Vehicle {
     {
       bool waitForResponse = true,
       List<String>? possibleResponses,
-      Duration? timeout
+      Duration timeout = const Duration(milliseconds: 500)
     }
   ) async {
     if (_waitingForResponse) await _responseCompleter!.future;
@@ -412,9 +412,7 @@ class Vehicle {
       _possibleResponses = possibleResponses ?? [command];
       _waitingForResponse = true;
 
-      if (timeout != null) {
-        _responseTimer = Timer(timeout, () => _responseCompleter?.complete());
-      }
+      _responseTimer = Timer(timeout, () => _responseCompleter?.complete());
 
       return _responseCompleter!.future;
     }
@@ -438,8 +436,7 @@ class Vehicle {
       // Stop monitoring
       await sendCommand(
         'STOP', 
-        possibleResponses: ['STOPPED', '?'],
-        timeout: const Duration(milliseconds: 500)
+        possibleResponses: ['STOPPED', '?']
       );
       //await Future.delayed(const Duration(milliseconds: 10));
     }
