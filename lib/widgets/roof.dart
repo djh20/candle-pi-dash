@@ -16,7 +16,9 @@ class Roof extends StatelessWidget {
         'fan_speed',
         'eco',
         'drawer',
-        'gear'
+        'gear',
+        'parking_brake_engaged',
+        'locked'
       ],
       builder: (context, model, properties) {
         final bool connected = model?.vehicle.connected ?? false;
@@ -24,6 +26,10 @@ class Roof extends StatelessWidget {
         final bool drawerOpen = model?.drawerOpen ?? false;
         final int gear = model?.vehicle.metrics['gear']?.value ?? 0;
         final bool parked = (gear == 0);
+        final bool parkingBrakeEngaged = 
+          model?.vehicle.metrics['parking_brake_engaged']?.value ?? false;
+
+        final bool locked =  model?.vehicle.metrics['locked']?.value ?? false;
 
         final int fanSpeed = model?.vehicle.metrics['fan_speed']?.value ?? 0;
         final int fanSpeedPercent = ((fanSpeed / 7) * 100).round();
@@ -42,6 +48,17 @@ class Roof extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    StatusIcon(
+                      icon: Icons.error_outline,
+                      active: parkingBrakeEngaged,
+                      color: Colors.red,
+                      compact: drawerOpen
+                    ),
+                    StatusIcon(
+                      icon: Icons.lock,
+                      active: locked,
+                      compact: drawerOpen
+                    ),
                     StatusIcon(
                       icon: Icons.eco_rounded,
                       active: eco,

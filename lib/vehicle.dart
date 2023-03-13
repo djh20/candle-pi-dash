@@ -19,7 +19,7 @@ FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
 class Vehicle {
   late AppModel model;
 
-  late List<Topic> topics;
+  late List<TopicGroup> groups;
   var metrics = <String, Metric>{};
 
   bool connected = false;
@@ -41,10 +41,15 @@ class Vehicle {
   BluetoothConnection? btConnection;
 
   String buffer = "";
-  bool waitingForResponse = false;
-  Completer<String>? responseCompleter;
-  String? lastCommand;
-  //List<String> commandQueue = [];
+  bool _waitingForResponse = false;
+  List<String>? _possibleResponses;
+  Completer<String?>? _responseCompleter;
+  Timer? _responseTimer;
+  String? _lastCommand;
+  
+  TopicGroup? currentGroup;
+  int? currentGroupIndex;
+  Timer? groupTimer;
 
   bool recording = false;
   int? recordingStartMs;
@@ -53,26 +58,57 @@ class Vehicle {
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
-    topics = [
-      Topic(
-        id: "421", // "174",
-        name: "SHIFTER",
-        bytes: 3 //8
+    groups = [
+      TopicGroup(
+        name: "High Priority",
+        mask: 0x048, 
+        filter: 0x000,
+        duration: const Duration(milliseconds: 200),
+        topics: [
+          Topic(
+            id: 0x421,
+            name: "Shifter",
+            bytes: 3
+          ),
+          Topic(
+            id: 0x180,
+            name: "Motor & Throttle",
+            bytes: 8
+          ),
+          Topic(
+            id: 0x284,
+            name: "Speed",
+            bytes: 8
+          ),
+          Topic(
+            id: 0x5B3,
+            name: "Battery",
+            bytes: 8
+          )
+        ] 
       ),
-      Topic(
-        id: "180",
-        name: "MOTOR",
-        bytes: 8
-      ),
-      Topic(
-        id: "284",
-        name: "ABS",
-        bytes: 8
-      ),
-      Topic(
-        id: "5B3",
-        name: "BATTERY",
-        bytes: 8
+      TopicGroup(
+        name: "Low Priority",
+        mask: 0x431, 
+        filter: 0x401,
+        duration: const Duration(milliseconds: 70),
+        topics: [
+          Topic(
+            id: 0x54B,
+            name: "Climate Control",
+            bytes: 8
+          ),
+          Topic(
+            id: 0x60D,
+            name: "Doors & Indicators",
+            bytes: 8
+          ),
+          Topic(
+            id: 0x5C5,
+            name: "Parking Brake & Odometer",
+            bytes: 8
+          )
+        ] 
       )
     ];
     
@@ -80,7 +116,7 @@ class Vehicle {
       Metric(
         id: "powered", 
         defaultValue: false, 
-        timeout: const Duration(milliseconds: 500)
+        timeout: const Duration(milliseconds: 1000)
       ),
       Metric(id: "gear"),
       Metric(id: "eco", defaultValue: false),
@@ -92,6 +128,14 @@ class Vehicle {
       Metric(id: "gids"),
       Metric(id: "soc", defaultValue: 0.0),
       Metric(id: "range"),
+      Metric(id: "fan_speed"),
+      Metric(id: "driver_door_open", defaultValue: false),
+      Metric(id: "passenger_door_open", defaultValue: false),
+      Metric(id: "indicating_left", defaultValue: false),
+      Metric(id: "indicating_right", defaultValue: false),
+      Metric(id: "locked", defaultValue: false),
+      Metric(id: "parking_brake_engaged", defaultValue: false),
+      Metric(id: "odometer")
     ]);
   }
 
@@ -225,7 +269,7 @@ class Vehicle {
 
       } else if (buffer.isNotEmpty) {
         String msg = buffer.replaceAll('>', '');
-        //model.log("RX: $msg");
+        model.log("RX: $msg");
 
         if (msg == "BUFFER FULL") {
           monitorAll();
@@ -239,15 +283,10 @@ class Vehicle {
           processFrame(msg);
         }
 
-        if (msg != lastCommand && waitingForResponse) { // Ignore echo
-          waitingForResponse = false;
-
-          // Store response for future.
-          String response = buffer;
-          
-          responseCompleter?.complete(
-            Future.delayed(const Duration(milliseconds: 50), () => response)
-          );
+        if (_waitingForResponse && _possibleResponses!.contains(msg)) {
+          _waitingForResponse = false;
+          _responseTimer?.cancel();
+          _responseCompleter?.complete(buffer);
         }
 
         buffer = "";
@@ -256,55 +295,28 @@ class Vehicle {
   }
 
   void processFrame(String frame) {
-    for (var topic in topics) {
-      if (frame.startsWith(topic.id)) {
-        String frameDataStr = frame.substring(topic.id.length);
-        if (frameDataStr.length == topic.bytes * 2) {
-          RegExp exp = RegExp(r'.{2}');
-          Iterable<Match> matches = exp.allMatches(frameDataStr);
-          var frameData = 
-            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-          
-          processTopicData(topic, frameData);
-          model.log(topic.name ?? topic.id);
+    for (var group in groups) {
+      for (var topic in group.topics) {
+        if (frame.startsWith(topic.idHex)) {
+          String frameDataStr = frame.substring(topic.idHex.length);
+          if (frameDataStr.length == topic.bytes * 2) {
+            RegExp exp = RegExp(r'.{2}');
+            Iterable<Match> matches = exp.allMatches(frameDataStr);
+            var frameData = 
+              matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+            
+            processTopicData(topic, frameData);
+            //model.log(topic.name);
+            //model.log(group.name);
+          }
+          return;
         }
-        break;
       }
     }
   }
 
   void processTopicData(Topic topic, List<int> data) {
-    if (topic.id == "002") {
-      /*
-      int rawAngle = (data[1] << 8) | data[0];
-      if ((rawAngle & 0x8000) > 0) {
-        rawAngle = -(~rawAngle & 0xFFFF);
-      }
-      metrics['steering_angle']?.setValue(rawAngle / 10);
-      */
-    
-    } else if (topic.id == "174") {
-      /*
-      int gear = 0;
-
-      switch (data[3]) {
-        case 170: // Park/Neutral
-          gear = 1;
-          break;
-        
-        case 187: // Drive
-          gear = 4;
-          break;
-
-        case 153: // Reverse
-          gear = 2;
-          break;
-      }
-
-      metrics['powered']?.setValue(1);
-      metrics['gear']?.setValue(gear);
-      */
-    } else if (topic.id == "421") {
+    if (topic.id == 0x421) {
       bool eco = false;
       int gear = 0;
 
@@ -334,7 +346,7 @@ class Vehicle {
       metrics['gear']?.setValue(gear);
       metrics['eco']?.setValue(eco);
 
-    } else if (topic.id == "180") {
+    } else if (topic.id == 0x180) {
       int rawPower = (data[2] << 8) | data[3];
       if ((rawPower & 0x8000) > 0) {
         rawPower = -(~rawPower & 0xFFFF);
@@ -345,7 +357,7 @@ class Vehicle {
       metrics['motor_power']?.setValue(power);
       metrics['powered']?.setValue(true);
 
-    } else if (topic.id == "284") {
+    } else if (topic.id == 0x284) {
       double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;
       double frontLeftSpeed = ((data[2] << 8) | data[3]) / 208;
 
@@ -355,34 +367,99 @@ class Vehicle {
       metrics['fl_speed']?.setValue(frontLeftSpeed);
       metrics['fr_speed']?.setValue(frontRightSpeed);
 
-    } else if (topic.id == "5B3") {
-      metrics['gids']?.setValue(data[5]);
+    } else if (topic.id == 0x5B3) {
+      final int gids = data[5];
+
+      // Gids shows as high value on startup - this is incorrect, so we ignore it.
+      if (gids < 1000) metrics['gids']?.setValue(gids);
+      
       metrics['soh']?.setValue(data[1] >> 1);
+
+    } else if (topic.id == 0x54B) {
+      metrics['fan_speed']?.setValue(data[4] >> 3);
+
+    } else if (topic.id == 0x60D) {
+      metrics['driver_door_open']?.setValue((data[0] & 0x10) > 0);
+      metrics['passenger_door_open']?.setValue((data[0] & 0x08) > 0);
+      metrics['indicating_left']?.setValue((data[2] & 0x40) > 0);
+      metrics['indicating_right']?.setValue((data[2] & 0x20) > 0);
+      metrics['locked']?.setValue((data[2] & 0x08) > 0);
+
+    } else if (topic.id == 0x5C5) {
+      metrics['parking_brake_engaged']?.setValue((data[0] & 0x04) > 0);
+      metrics['odometer']?.setValue((data[1] << 16) | (data[2] << 8) | data[3]);
     }
   }
 
-  Future<String> sendCommand(String command, {bool waitForResponse = true}) async {
-    //model.log("TX: $command");
+  Future<String?> sendCommand(
+    String command, 
+    {
+      bool waitForResponse = true,
+      List<String>? possibleResponses,
+      Duration? timeout
+    }
+  ) async {
+    if (_waitingForResponse) await _responseCompleter!.future;
+    model.log("TX: $command");
 
     command = command.replaceAll(' ', '');
-    lastCommand = command;
+    _lastCommand = command;
     
     btConnection?.output.add(ascii.encode('$command\r'));
     
     if (waitForResponse) {
-      responseCompleter = Completer<String>();
-      waitingForResponse = true;
-      return responseCompleter!.future;
+      _responseCompleter = Completer<String?>();
+      _possibleResponses = possibleResponses ?? [command];
+      _waitingForResponse = true;
+
+      if (timeout != null) {
+        _responseTimer = Timer(timeout, () => _responseCompleter?.complete());
+      }
+
+      return _responseCompleter!.future;
     }
     
     //return Future.delayed(const Duration(milliseconds: 20), () => "");
-    return Future.value("");
+    return null;
   }
 
-  void monitorAll() {
+  Future<void> monitorAll() async {
+    if (!connected || currentGroup == null) return;
+
+    await sendCommand("AT MA");
+  }
+
+  Future<void> nextGroup() async {
     if (!connected) return;
 
-    sendCommand("AT MA", waitForResponse: false);
+    if (currentGroup != null) {
+      currentGroup = null;
+
+      // Stop monitoring
+      await sendCommand(
+        'STOP', 
+        possibleResponses: ['STOPPED', '?'],
+        timeout: const Duration(milliseconds: 500)
+      );
+      //await Future.delayed(const Duration(milliseconds: 10));
+    }
+    
+    currentGroupIndex ??= 0;
+    currentGroupIndex = currentGroupIndex! + 1;
+
+    if (currentGroupIndex! >= groups.length) {
+      currentGroupIndex = 0;
+    }
+
+    TopicGroup group = groups[currentGroupIndex!];
+
+    await sendCommand('AT CM ${group.maskHex}');
+    await sendCommand('AT CF ${group.filterHex}');
+
+    currentGroup = group;
+    groupTimer = Timer(group.duration, nextGroup);
+
+    monitorAll();
   }
 
   void connect() async {
@@ -419,18 +496,19 @@ class Vehicle {
       
       Future.delayed(const Duration(milliseconds: 50), () async {
         model.log('Initializing...');
-        await sendCommand("AT Z");
-        await sendCommand("AT E0");
+        await sendCommand("AT Z", waitForResponse: false);
+        await Future.delayed(const Duration(seconds: 2));
+        //await sendCommand("AT E0");
         await sendCommand("AT SP6");
         await sendCommand("AT CAF0");
         await sendCommand("AT S0");
         await sendCommand("AT H1");
-        await sendCommand("AT CF 000");
-        await sendCommand("AT CM 048");
+        //await sendCommand("AT CF 000");
+        //await sendCommand("AT CM 048");
         initialized = true;
         model.log("Initialized!");
         
-        monitorAll();
+        nextGroup();
       });
 
       model.notify('connected');
@@ -453,7 +531,7 @@ class Vehicle {
     btConnection?.close();
     btConnection?.dispose();
     btConnection = null;
-    responseCompleter = null;
+    _responseCompleter = null;
 
     //commandQueue.clear();
     //metrics.clear();

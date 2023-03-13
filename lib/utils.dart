@@ -52,6 +52,12 @@ int getTimeElapsed(int time) {
   return (now - time);
 }
 
+String intToHex(int integer, int? minLength) {
+  String hex = integer.toRadixString(16).toUpperCase();
+  if (minLength != null) hex = hex.padLeft(minLength, '0');
+  return hex;
+}
+
 class Bearing {
   final double degrees;
   final double radians;

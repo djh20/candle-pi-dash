@@ -47,6 +47,7 @@ class SideDrawer extends StatelessWidget {
                   NavigationCardContent()
                 ],
               ),
+              /*
               DrawerCard(
                 title: 'Insights', // Insights,
                 icon: Icons.search_rounded,
@@ -54,6 +55,7 @@ class SideDrawer extends StatelessWidget {
                   InsightsCardContent()
                 ],
               ),
+              */
               DrawerCard(
                 title: 'Performance',
                 icon: Icons.speed_rounded,

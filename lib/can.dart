@@ -1,15 +1,43 @@
 import 'dart:async';
 
+import 'package:candle_dash/utils.dart';
+
+class TopicGroup {
+  final String name;
+  final int mask;
+  final int filter;
+  final Duration duration;
+  final List<Topic> topics;
+
+  late final String maskHex;
+  late final String filterHex;
+
+  TopicGroup({
+    required this.name,
+    required this.mask,
+    required this.filter,
+    required this.duration,
+    this.topics = const []
+  }) {
+    maskHex = intToHex(mask, 3);
+    filterHex = intToHex(filter, 3);
+  }
+}
+
 class Topic {
-  final String id;
-  final String? name;
+  final int id;
+  final String name;
   final int bytes;
+
+  late final String idHex;
 
   Topic({
     required this.id,
-    this.name,
+    required this.name,
     required this.bytes
-  });
+  }) {
+    idHex = intToHex(id, 3);
+  }
 }
 
 class Metric {
