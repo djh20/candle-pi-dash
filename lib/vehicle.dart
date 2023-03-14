@@ -63,7 +63,7 @@ class Vehicle {
         name: "High Priority",
         mask: 0x048, 
         filter: 0x000,
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 500),
         topics: [
           Topic(
             id: 0x421,
@@ -91,7 +91,7 @@ class Vehicle {
         name: "Low Priority",
         mask: 0x431, 
         filter: 0x401,
-        duration: const Duration(milliseconds: 70),
+        duration: const Duration(milliseconds: 90),
         topics: [
           Topic(
             id: 0x54B,
