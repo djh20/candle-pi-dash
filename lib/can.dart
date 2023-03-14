@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:candle_dash/utils.dart';
 
 class TopicGroup {
-  final String name;
+  final String? name;
   final int mask;
   final int filter;
   final Duration duration;
@@ -13,7 +13,7 @@ class TopicGroup {
   late final String filterHex;
 
   TopicGroup({
-    required this.name,
+    this.name,
     required this.mask,
     required this.filter,
     required this.duration,

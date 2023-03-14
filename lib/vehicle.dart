@@ -45,7 +45,6 @@ class Vehicle {
   List<String>? _possibleResponses;
   Completer<String?>? _responseCompleter;
   Timer? _responseTimer;
-  String? _lastCommand;
   
   TopicGroup? currentGroup;
   int? currentGroupIndex;
@@ -60,10 +59,9 @@ class Vehicle {
 
     groups = [
       TopicGroup(
-        name: "High Priority",
         mask: 0x048, 
         filter: 0x000,
-        duration: const Duration(milliseconds: 500),
+        duration: const Duration(milliseconds: 50),
         topics: [
           Topic(
             id: 0x421,
@@ -88,10 +86,9 @@ class Vehicle {
         ] 
       ),
       TopicGroup(
-        name: "Low Priority",
         mask: 0x431, 
         filter: 0x401,
-        duration: const Duration(milliseconds: 90),
+        duration: const Duration(milliseconds: 35),
         topics: [
           Topic(
             id: 0x54B,
@@ -100,12 +97,34 @@ class Vehicle {
           ),
           Topic(
             id: 0x60D,
-            name: "Doors & Indicators",
+            name: "Doors",
             bytes: 8
           ),
           Topic(
             id: 0x5C5,
             name: "Parking Brake & Odometer",
+            bytes: 8
+          )
+        ] 
+      ),
+      TopicGroup(
+        mask: 0x620, 
+        filter: 0x200,
+        duration: const Duration(milliseconds: 35),
+        topics: [
+          Topic(
+            id: 0x292,
+            name: "Lead Acid Battery",
+            bytes: 8
+          ),
+          Topic(
+            id: 0x358,
+            name: "Indicators & Headlights",
+            bytes: 8
+          ),
+          Topic(
+            id: 0x385,
+            name: "Tire Pressure",
             bytes: 8
           )
         ] 
@@ -116,7 +135,7 @@ class Vehicle {
       Metric(
         id: "powered", 
         defaultValue: false, 
-        timeout: const Duration(milliseconds: 1000)
+        timeout: const Duration(seconds: 1)
       ),
       Metric(id: "gear"),
       Metric(id: "eco", defaultValue: false),
@@ -128,14 +147,23 @@ class Vehicle {
       Metric(id: "gids"),
       Metric(id: "soc", defaultValue: 0.0),
       Metric(id: "range"),
-      Metric(id: "fan_speed"),
+      Metric(id: "fan_speed", timeout: const Duration(seconds: 5)),
       Metric(id: "driver_door_open", defaultValue: false),
       Metric(id: "passenger_door_open", defaultValue: false),
-      Metric(id: "indicating_left", defaultValue: false),
-      Metric(id: "indicating_right", defaultValue: false),
+      Metric(
+        id: "indicating_left", 
+        defaultValue: false, 
+        //timeout: const Duration(seconds: 1)
+      ),
+      Metric(
+        id: "indicating_right", 
+        defaultValue: false, 
+        //timeout: const Duration(seconds: 1)
+      ),
       Metric(id: "locked", defaultValue: false),
       Metric(id: "parking_brake_engaged", defaultValue: false),
-      Metric(id: "odometer")
+      Metric(id: "odometer"),
+      Metric(id: "lead_acid_voltage"),
     ]);
   }
 
@@ -381,13 +409,31 @@ class Vehicle {
     } else if (topic.id == 0x60D) {
       metrics['driver_door_open']?.setValue((data[0] & 0x10) > 0);
       metrics['passenger_door_open']?.setValue((data[0] & 0x08) > 0);
-      metrics['indicating_left']?.setValue((data[2] & 0x40) > 0);
-      metrics['indicating_right']?.setValue((data[2] & 0x20) > 0);
+      //metrics['indicating_left']?.setValue((data[2] & 0x40) > 0);
+      //metrics['indicating_right']?.setValue((data[2] & 0x20) > 0);
+
+      /*
+      if ((data[1] & 0x20) > 0) {
+        metrics['indicating_left']?.setValue(true);
+      }
+
+      if ((data[1] & 0x40) > 0) {
+        metrics['indicating_right']?.setValue(true);
+      }
+      */
+
       metrics['locked']?.setValue((data[2] & 0x08) > 0);
 
     } else if (topic.id == 0x5C5) {
       metrics['parking_brake_engaged']?.setValue((data[0] & 0x04) > 0);
       metrics['odometer']?.setValue((data[1] << 16) | (data[2] << 8) | data[3]);
+
+    } else if (topic.id == 0x358) {
+      metrics['indicating_left']?.setValue((data[2] & 0x04) > 0);
+      metrics['indicating_right']?.setValue((data[2] & 0x08) > 0);
+
+    } else if (topic.id == 0x292) {
+      metrics['lead_acid_voltage']?.setValue(data[3] / 10);
     }
   }
 
@@ -403,7 +449,6 @@ class Vehicle {
     model.log("TX: $command");
 
     command = command.replaceAll(' ', '');
-    _lastCommand = command;
     
     btConnection?.output.add(ascii.encode('$command\r'));
     
