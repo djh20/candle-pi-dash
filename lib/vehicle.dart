@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:collection/collection.dart';
 import 'package:wakelock/wakelock.dart';
 
 FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
@@ -46,9 +46,12 @@ class Vehicle {
   Completer<String?>? _responseCompleter;
   Timer? _responseTimer;
   
-  TopicGroup? currentGroup;
-  int? currentGroupIndex;
-  Timer? groupTimer;
+  TopicGroup? _currentGroup;
+  int? _currentGroupIndex;
+  Timer? _groupTimer;
+  DateTime? _groupStartTime;
+  final _timings = Map<String, int>();
+  List<Topic> _pendingTopics = [];
 
   bool recording = false;
   int? recordingStartMs;
@@ -61,71 +64,75 @@ class Vehicle {
       TopicGroup(
         mask: 0x048, 
         filter: 0x000,
-        duration: const Duration(milliseconds: 50),
+        timeout: const Duration(milliseconds: 200),
         topics: [
           Topic(
             id: 0x421,
             name: "Shifter",
-            bytes: 3
+            bytes: 3,
+            shouldWait: () => true
           ),
           Topic(
             id: 0x180,
             name: "Motor & Throttle",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => metrics['gear']?.value > 0
           ),
           Topic(
             id: 0x284,
             name: "Speed",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => metrics['gear']?.value > 0
           ),
           Topic(
             id: 0x5B3,
             name: "Battery",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => false
           )
         ] 
       ),
       TopicGroup(
         mask: 0x431, 
         filter: 0x401,
-        duration: const Duration(milliseconds: 35),
+        timeout: const Duration(milliseconds: 100),
         topics: [
           Topic(
             id: 0x54B,
             name: "Climate Control",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => true
           ),
           Topic(
             id: 0x60D,
             name: "Doors",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => metrics['gear']?.value == 0
           ),
           Topic(
             id: 0x5C5,
             name: "Parking Brake & Odometer",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => metrics['gear']?.value == 0
           )
         ] 
       ),
       TopicGroup(
-        mask: 0x620, 
-        filter: 0x200,
-        duration: const Duration(milliseconds: 35),
+        mask: 0x635, 
+        filter: 0x210,
+        timeout: const Duration(milliseconds: 100),
         topics: [
           Topic(
             id: 0x292,
             name: "Lead Acid Battery",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => false
           ),
           Topic(
             id: 0x358,
             name: "Indicators & Headlights",
-            bytes: 8
-          ),
-          Topic(
-            id: 0x385,
-            name: "Tire Pressure",
-            bytes: 8
+            bytes: 8,
+            shouldWait: () => true
           )
         ] 
       )
@@ -135,7 +142,7 @@ class Vehicle {
       Metric(
         id: "powered", 
         defaultValue: false, 
-        timeout: const Duration(seconds: 1)
+        timeout: const Duration(seconds: 4)
       ),
       Metric(id: "gear"),
       Metric(id: "eco", defaultValue: false),
@@ -187,22 +194,24 @@ class Vehicle {
         pTracking.setTracking(false);
         
         // Close drawer
+        /*
         model.drawerOpen = false;
         model.hPageController.animateToPage(
           0, 
           duration: const Duration(milliseconds: 500), 
           curve: Curves.easeInOutQuad
         );
+        */
 
         // Allow all alerts to be shown again (for next trip).
         model.shownAlerts.clear();
         model.alertsEnabled = false;
 
         // So we will start on the map page next time the drawer is opened.
-        model.vPage = 0;
+        //model.vPage = 0;
 
         // Clear any cached data.
-        rootBundle.clear();
+        //rootBundle.clear();
       }
 
     } else if (metric.id == 'speed') {
@@ -230,9 +239,11 @@ class Vehicle {
       } else {
         model.speedingStartTime = null;
       }
-      
+    
+    /*
     } else if (metric.id == 'fan_speed' && metric.value > 0) {
       model.showAlert("cc_on");
+    */
     
     } else if (metric.id == 'gids' || metric.id == 'soh') {
       final int gids = metrics['gids']!.value;
@@ -324,26 +335,36 @@ class Vehicle {
 
   void processFrame(String frame) {
     for (var group in groups) {
-      for (var topic in group.topics) {
-        if (frame.startsWith(topic.idHex)) {
-          String frameDataStr = frame.substring(topic.idHex.length);
-          if (frameDataStr.length == topic.bytes * 2) {
-            RegExp exp = RegExp(r'.{2}');
-            Iterable<Match> matches = exp.allMatches(frameDataStr);
-            var frameData = 
-              matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-            
-            processTopicData(topic, frameData);
-            //model.log(topic.name);
-            //model.log(group.name);
+      final Topic? frameTopic = 
+        group.topics.firstWhereOrNull((topic) => frame.startsWith(topic.idHex));
+
+      if (frameTopic != null) {
+        String frameDataStr = frame.substring(frameTopic.idHex.length);
+        if (frameDataStr.length == frameTopic.bytes * 2) {
+          RegExp exp = RegExp(r'.{2}');
+          Iterable<Match> matches = exp.allMatches(frameDataStr);
+          var frameData = 
+            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+
+          if (
+            _currentGroup != null && 
+            _pendingTopics.remove(frameTopic) &&
+            _pendingTopics.isEmpty
+          ) {
+            nextGroup();
           }
-          return;
+          
+          processTopicData(frameTopic, frameData);
+          //model1(topic.name);
+          //model.log(group.name);
         }
+        break;
       }
     }
   }
 
   void processTopicData(Topic topic, List<int> data) {
+    model.log(topic.name, category: 1);
     if (topic.id == 0x421) {
       bool eco = false;
       int gear = 0;
@@ -373,6 +394,7 @@ class Vehicle {
 
       metrics['gear']?.setValue(gear);
       metrics['eco']?.setValue(eco);
+      metrics['powered']?.setValue(true);
 
     } else if (topic.id == 0x180) {
       int rawPower = (data[2] << 8) | data[3];
@@ -383,7 +405,6 @@ class Vehicle {
       // TODO: Make this more accurate.
       double power = rawPower / 200;
       metrics['motor_power']?.setValue(power);
-      metrics['powered']?.setValue(true);
 
     } else if (topic.id == 0x284) {
       double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;
@@ -409,6 +430,8 @@ class Vehicle {
     } else if (topic.id == 0x60D) {
       metrics['driver_door_open']?.setValue((data[0] & 0x10) > 0);
       metrics['passenger_door_open']?.setValue((data[0] & 0x08) > 0);
+
+      //metrics['powered']?.setValue(((data[1] >> 1) & 0x03) == 3);
       //metrics['indicating_left']?.setValue((data[2] & 0x40) > 0);
       //metrics['indicating_right']?.setValue((data[2] & 0x20) > 0);
 
@@ -429,8 +452,8 @@ class Vehicle {
       metrics['odometer']?.setValue((data[1] << 16) | (data[2] << 8) | data[3]);
 
     } else if (topic.id == 0x358) {
-      metrics['indicating_left']?.setValue((data[2] & 0x04) > 0);
-      metrics['indicating_right']?.setValue((data[2] & 0x08) > 0);
+      metrics['indicating_left']?.setValue(data[2] == 4);
+      metrics['indicating_right']?.setValue(data[2] == 8);
 
     } else if (topic.id == 0x292) {
       metrics['lead_acid_voltage']?.setValue(data[3] / 10);
@@ -467,7 +490,7 @@ class Vehicle {
   }
 
   Future<void> monitorAll() async {
-    if (!connected || currentGroup == null) return;
+    if (!connected || _currentGroup == null) return;
 
     await sendCommand("AT MA");
   }
@@ -475,33 +498,49 @@ class Vehicle {
   Future<void> nextGroup() async {
     if (!connected) return;
 
-    if (currentGroup != null) {
-      currentGroup = null;
+    if (_currentGroup != null) {
+      String groupId = _currentGroup!.maskHex;
+      _currentGroup = null;
+      _groupTimer?.cancel();
 
+      DateTime before = DateTime.now();
       // Stop monitoring
       await sendCommand(
         'STOP', 
         possibleResponses: ['STOPPED', '?']
       );
+      _timings['stop'] = DateTime.now().difference(before).inMilliseconds;
+
       //await Future.delayed(const Duration(milliseconds: 10));
+      _timings['total'] = DateTime.now().difference(_groupStartTime!).inMilliseconds;
+
+      model.log('$groupId: ${_timings['total']} (${_timings['init']}, ${_timings['stop']})', category: 2);
     }
+
+    _timings.clear();
     
-    currentGroupIndex ??= 0;
-    currentGroupIndex = currentGroupIndex! + 1;
+    _groupStartTime = DateTime.now();
+    _currentGroupIndex ??= 0;
+    _currentGroupIndex = _currentGroupIndex! + 1;
 
-    if (currentGroupIndex! >= groups.length) {
-      currentGroupIndex = 0;
+    if (_currentGroupIndex! >= groups.length) {
+      _currentGroupIndex = 0;
     }
 
-    TopicGroup group = groups[currentGroupIndex!];
-
+    TopicGroup group = groups[_currentGroupIndex!];
+    
+    DateTime before = DateTime.now();
     await sendCommand('AT CM ${group.maskHex}');
     await sendCommand('AT CF ${group.filterHex}');
 
-    currentGroup = group;
-    groupTimer = Timer(group.duration, nextGroup);
-
-    monitorAll();
+    _pendingTopics = group.topics.where((topic) => topic.shouldWait()).toList();
+    //model.log(_pendingTopics.map((t) => t.name).join(", "), category: 1);
+    
+    _currentGroup = group;
+    
+    await monitorAll();
+    _groupTimer = Timer(group.timeout, nextGroup);
+    _timings['init'] = DateTime.now().difference(before).inMilliseconds;
   }
 
   void connect() async {

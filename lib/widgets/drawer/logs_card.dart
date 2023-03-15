@@ -14,7 +14,8 @@ class LogsCardContent extends StatelessWidget {
       properties: const ['logs'],
       builder: (context, model, properties) {
         List<Widget> children = [];
-        List<String> logs = model?.logs.reversed.take(50).toList() ?? [];
+        final List<String> logs = model?.logs.reversed.take(50).toList() ?? [];
+        final int logCategory = model?.logCategory ?? 0;
 
         for (int i = 0; i < logs.length; i++) {
           children.add(
@@ -36,12 +37,11 @@ class LogsCardContent extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: ElevatedButton(
-                onPressed: () => model?.clearLogs(), 
-                child: const Text("CLEAR"),
+                onPressed: () => model?.nextLogCategory(), 
+                child: Text('CATEGORY: $logCategory'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(40),
-                  elevation: 0,
-                  backgroundColor: Colors.red
+                  elevation: 0
                 ),
               ),
             )

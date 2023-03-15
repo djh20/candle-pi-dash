@@ -104,6 +104,8 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   int? speedingStartTime;
   bool speedingAlertsEnabled = true;
+
+  int logCategory = 0;
   
   AppModel() {
     vehicle = Vehicle(this);
@@ -525,9 +527,16 @@ class AppModel extends PropertyChangeNotifier<String> {
     notify('time');
   }
 
-  void log(String msg) {
+  void log(String msg, {int category = 0}) {
+    if (category != logCategory) return;
     //debugPrint(msg);
     logs.add(msg);
+    notify("logs");
+  }
+
+  void nextLogCategory() {
+    logCategory++;
+    if (logCategory > 2) logCategory = 0;
     notify("logs");
   }
 

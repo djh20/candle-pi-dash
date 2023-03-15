@@ -6,7 +6,7 @@ class TopicGroup {
   final String? name;
   final int mask;
   final int filter;
-  final Duration duration;
+  final Duration timeout;
   final List<Topic> topics;
 
   late final String maskHex;
@@ -16,7 +16,7 @@ class TopicGroup {
     this.name,
     required this.mask,
     required this.filter,
-    required this.duration,
+    required this.timeout,
     this.topics = const []
   }) {
     maskHex = intToHex(mask, 3);
@@ -28,13 +28,15 @@ class Topic {
   final int id;
   final String name;
   final int bytes;
+  final bool Function() shouldWait;
 
   late final String idHex;
 
   Topic({
     required this.id,
     required this.name,
-    required this.bytes
+    required this.bytes,
+    required this.shouldWait
   }) {
     idHex = intToHex(id, 3);
   }
