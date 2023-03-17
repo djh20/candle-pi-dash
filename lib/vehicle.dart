@@ -156,7 +156,7 @@ class Vehicle {
       Metric(
         id: "powered", 
         defaultValue: false, 
-        timeout: const Duration(seconds: 4)
+        timeout: const Duration(seconds: 2)
       ),
       Metric(id: "gear"),
       Metric(id: "eco", defaultValue: false),
@@ -168,7 +168,7 @@ class Vehicle {
       Metric(id: "gids"),
       Metric(id: "soc", defaultValue: 0.0),
       Metric(id: "range"),
-      Metric(id: "fan_speed", timeout: const Duration(seconds: 5)),
+      Metric(id: "fan_speed", timeout: const Duration(seconds: 2)),
       Metric(id: "driver_door_open", defaultValue: false),
       Metric(id: "passenger_door_open", defaultValue: false),
       Metric(
@@ -263,11 +263,11 @@ class Vehicle {
       final int gids = metrics['gids']!.value;
       final int soh = metrics['soh']!.value;
 
-      final double energyKwh = max((gids*Constants.kwhPerGid), 0);
+      final double energyKwh = (gids*Constants.kwhPerGid);
       
       // Range Calculation
-      // - Minus 1.15kWh is reserved energy that cannot be used.
-      final int range = ((energyKwh-1.15)*Constants.kmPerKwh).round();
+      // - Minus ~1kWh is reserved energy that cannot be used.
+      final int range = max(((energyKwh-1)*Constants.kmPerKwh).round(), 0);
       metrics['range']?.setValue(range);
 
       final double batteryCapacity = ((soh/100.0)*Constants.fullBatteryCapacity);
@@ -409,7 +409,6 @@ class Vehicle {
 
       metrics['gear']?.setValue(gear);
       metrics['eco']?.setValue(eco);
-      metrics['powered']?.setValue(true);
 
     } else if (topic.id == 0x180) {
       int rawPower = (data[2] << 8) | data[3];
@@ -472,6 +471,7 @@ class Vehicle {
 
     } else if (topic.id == 0x292) {
       metrics['lead_acid_voltage']?.setValue(data[3] / 10);
+      metrics['powered']?.setValue(true);
     }
   }
 
@@ -505,7 +505,7 @@ class Vehicle {
     if (!connected) return;
 
     if (_currentGroup != null) {
-      //String groupId = _currentGroup!.maskHex;
+      String groupName = _currentGroup!.name;
       _currentGroup = null;
       _groupTimer?.cancel();
 
@@ -517,7 +517,7 @@ class Vehicle {
       //await Future.delayed(const Duration(milliseconds: 10));
       _timings['total'] = DateTime.now().difference(_groupStartTime!).inMilliseconds;
 
-      model.log('${_currentGroup!.name}: ${_timings['total']} (${_timings['init']}, ${_timings['stop']})', category: 2);
+      model.log('$groupName: ${_timings['total']} (${_timings['init']}, ${_timings['stop']})', category: 2);
     }
 
     _timings.clear();
@@ -604,7 +604,7 @@ class Vehicle {
         await _sendCommand(Command("AT CAF0"));
         await _sendCommand(Command("AT S0"));
         await _sendCommand(Command("AT H1"));
-        await _sendCommand(Command("AT CF 000"));
+        //await _sendCommand(Command("AT CF 000"));
         //await sendCommand("AT CM 048");
         model.log("Initialized!");
         
