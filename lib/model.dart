@@ -124,7 +124,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   @override
   void dispose() {
-    vehicle.close();
+    vehicle.disconnect();
     super.dispose();
   }
 
@@ -536,7 +536,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   void nextLogCategory() {
     logCategory++;
-    if (logCategory > 2) logCategory = 0;
+    if (logCategory > 3) logCategory = 0;
     notify("logs");
   }
 

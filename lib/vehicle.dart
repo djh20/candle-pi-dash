@@ -24,7 +24,6 @@ class Vehicle {
 
   bool connected = false;
   bool connecting = false;
-  bool initialized = false;
 
   late PerformanceTracking pTracking;
 
@@ -37,103 +36,118 @@ class Vehicle {
   double bearingRad = 0;
   double bearingDeg = 0;
   
-  String? btAddress;
-  BluetoothConnection? btConnection;
+  String? _btAddress;
+  BluetoothConnection? _btConnection;
 
-  String buffer = "";
-  bool _waitingForResponse = false;
-  List<String>? _possibleResponses;
-  Completer<String?>? _responseCompleter;
-  Timer? _responseTimer;
+  String _buffer = "";
+
+  final List<Command> _commandQueue = [];
+  Command? _latestCommand;
+  Timer? _commandTimer;
   
   TopicGroup? _currentGroup;
   int? _currentGroupIndex;
   Timer? _groupTimer;
   DateTime? _groupStartTime;
-  final _timings = Map<String, int>();
+  final _timings = <String, int>{};
   List<Topic> _pendingTopics = [];
 
   bool recording = false;
-  int? recordingStartMs;
-  String recordedData = "";
+  int? _recordingStartMs;
+  String _recordedData = "";
 
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
     groups = [
       TopicGroup(
-        mask: 0x048, 
-        filter: 0x000,
-        timeout: const Duration(milliseconds: 200),
+        name: "High Speed",
+        //mask: 0x048, 
+        //filter: 0x000,
+        timeout: const Duration(milliseconds: 500),
         topics: [
           Topic(
             id: 0x421,
             name: "Shifter",
             bytes: 3,
-            shouldWait: () => true
+            isEnabled: () => metrics['speed']?.value < 10
+            //shouldWait: () => true
           ),
           Topic(
             id: 0x180,
             name: "Motor & Throttle",
             bytes: 8,
-            shouldWait: () => metrics['gear']?.value > 0
+            isEnabled: () => metrics['gear']?.value > 0
+            //shouldWait: () => metrics['gear']?.value > 0
           ),
           Topic(
             id: 0x284,
             name: "Speed",
             bytes: 8,
-            shouldWait: () => metrics['gear']?.value > 0
+            isEnabled: () => metrics['gear']?.value > 0
+            //shouldWait: () => metrics['gear']?.value > 0
           ),
           Topic(
-            id: 0x5B3,
-            name: "Battery",
+            id: 0x292,
+            name: "Lead Acid Battery",
             bytes: 8,
-            shouldWait: () => false
-          )
+            isEnabled: () => true
+            //shouldWait: () => false
+          ),
         ] 
       ),
       TopicGroup(
-        mask: 0x431, 
-        filter: 0x401,
+        name: "Low Speed #1",
+        //mask: 0x431, 
+        //filter: 0x401,
         timeout: const Duration(milliseconds: 100),
         topics: [
           Topic(
             id: 0x54B,
             name: "Climate Control",
             bytes: 8,
-            shouldWait: () => true
+            isEnabled: () => true
+            //shouldWait: () => true
           ),
           Topic(
             id: 0x60D,
             name: "Doors",
             bytes: 8,
-            shouldWait: () => metrics['gear']?.value == 0
+            isEnabled: () => metrics['speed']?.value == 0,
+            //shouldWait: () => metrics['gear']?.value == 0
           ),
           Topic(
             id: 0x5C5,
             name: "Parking Brake & Odometer",
             bytes: 8,
-            shouldWait: () => metrics['gear']?.value == 0
+            isEnabled: () =>
+              metrics['parking_brake_engaged']?.value == true || 
+              metrics['speed']?.value == 0
+            //shouldWait: () => metrics['gear']?.value == 0
           )
         ] 
       ),
       TopicGroup(
-        mask: 0x635, 
-        filter: 0x210,
+        name: "Low Speed #2",
+        //mask: 0x114, 
+        //filter: 0x110,
         timeout: const Duration(milliseconds: 100),
         topics: [
-          Topic(
-            id: 0x292,
-            name: "Lead Acid Battery",
-            bytes: 8,
-            shouldWait: () => false
-          ),
           Topic(
             id: 0x358,
             name: "Indicators & Headlights",
             bytes: 8,
-            shouldWait: () => true
-          )
+            isEnabled: () => metrics['gear']?.value > 0
+            //shouldWait: () => true
+          ),
+          Topic(
+            id: 0x5B3,
+            name: "HV Battery",
+            bytes: 8,
+            isEnabled: () => true,
+            //important: false
+            //shouldWait: () => false
+          ),
         ] 
       )
     ];
@@ -304,31 +318,33 @@ class Vehicle {
   void processIncomingData(Uint8List data) {
     for (var charCode in data) {
       if (charCode != 13) {
-        buffer += String.fromCharCode(charCode);
+        _buffer += String.fromCharCode(charCode);
 
-      } else if (buffer.isNotEmpty) {
-        String msg = buffer.replaceAll('>', '');
+      } else if (_buffer.isNotEmpty) {
+        String msg = _buffer.replaceAll('>', '');
         model.log("RX: $msg");
 
         if (msg == "BUFFER FULL") {
-          monitorAll();
+          if (_currentGroup != null) {
+            _sendCommand(Command("AT MA"));
+          }
           
         } else {
           if (recording) {
-            int ms = millis() - recordingStartMs!;
-            recordedData += '$ms\t$msg\n';
+            int ms = millis() - _recordingStartMs!;
+            _recordedData += '$ms\t$msg\n';
           }
 
           processFrame(msg);
         }
 
-        if (_waitingForResponse && _possibleResponses!.contains(msg)) {
-          _waitingForResponse = false;
-          _responseTimer?.cancel();
-          _responseCompleter?.complete(buffer);
+        final bool waitingForResponse = _latestCommand?.completer.isCompleted == false;
+        if (waitingForResponse && _latestCommand!.validResponses.contains(msg)) {
+          _commandTimer?.cancel();
+          _completeCommand(_latestCommand!, msg);
         }
 
-        buffer = "";
+        _buffer = "";
       }
     }
   }
@@ -340,23 +356,23 @@ class Vehicle {
 
       if (frameTopic != null) {
         String frameDataStr = frame.substring(frameTopic.idHex.length);
-        if (frameDataStr.length == frameTopic.bytes * 2) {
-          RegExp exp = RegExp(r'.{2}');
-          Iterable<Match> matches = exp.allMatches(frameDataStr);
-          var frameData = 
-            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
 
-          if (
-            _currentGroup != null && 
-            _pendingTopics.remove(frameTopic) &&
-            _pendingTopics.isEmpty
-          ) {
-            nextGroup();
-          }
+        if (frameDataStr.length == frameTopic.bytes * 2) {
+          model.log(frameTopic.name, category: 1);
+
+          final RegExp exp = RegExp(r'.{2}');
+          final Iterable<Match> matches = exp.allMatches(frameDataStr);
+          final frameData = 
+            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
           
           processTopicData(frameTopic, frameData);
-          //model1(topic.name);
-          //model.log(group.name);
+
+          if (_currentGroup != null && _pendingTopics.remove(frameTopic)) {
+            model.log(_pendingTopics.map((t) => t.name).toList().toString(), category: 2);
+            if (_pendingTopics.isEmpty) nextGroup();
+          }
+        } else {
+          model.log('${frameTopic.name} (INVALID)', category: 1);
         }
         break;
       }
@@ -364,7 +380,6 @@ class Vehicle {
   }
 
   void processTopicData(Topic topic, List<int> data) {
-    model.log(topic.name, category: 1);
     if (topic.id == 0x421) {
       bool eco = false;
       int gear = 0;
@@ -452,69 +467,57 @@ class Vehicle {
       metrics['odometer']?.setValue((data[1] << 16) | (data[2] << 8) | data[3]);
 
     } else if (topic.id == 0x358) {
-      metrics['indicating_left']?.setValue(data[2] == 4);
-      metrics['indicating_right']?.setValue(data[2] == 8);
+      metrics['indicating_left']?.setValue((data[2] & 0x02) > 0);
+      metrics['indicating_right']?.setValue((data[2] & 0x04) > 0);
 
     } else if (topic.id == 0x292) {
       metrics['lead_acid_voltage']?.setValue(data[3] / 10);
     }
   }
 
-  Future<String?> sendCommand(
-    String command, 
-    {
-      bool waitForResponse = true,
-      List<String>? possibleResponses,
-      Duration timeout = const Duration(milliseconds: 500)
-    }
-  ) async {
-    if (_waitingForResponse) await _responseCompleter!.future;
-    model.log("TX: $command");
+  Future<String?> _sendCommand(Command command) {
+    _commandQueue.add(command);
+    if (_commandQueue.length == 1) _processCommandQueue();
 
-    command = command.replaceAll(' ', '');
-    
-    btConnection?.output.add(ascii.encode('$command\r'));
-    
-    if (waitForResponse) {
-      _responseCompleter = Completer<String?>();
-      _possibleResponses = possibleResponses ?? [command];
-      _waitingForResponse = true;
-
-      _responseTimer = Timer(timeout, () => _responseCompleter?.complete());
-
-      return _responseCompleter!.future;
-    }
-    
-    //return Future.delayed(const Duration(milliseconds: 20), () => "");
-    return null;
+    return command.completer.future;
   }
 
-  Future<void> monitorAll() async {
-    if (!connected || _currentGroup == null) return;
+  void _processCommandQueue() {
+    if (!connected || _commandQueue.isEmpty) return;
+    if (_latestCommand?.completer.isCompleted == false) return;
 
-    await sendCommand("AT MA");
+    final command = _commandQueue.first;
+    _commandQueue.remove(command);
+    _latestCommand = command;
+    
+    model.log('TX: ${command.text}');
+    _btConnection?.output.add(ascii.encode('${command.text}\r'));
+
+    _commandTimer = Timer(command.timeout, () => _completeCommand(command, null));
+  }
+
+  void _completeCommand(Command command, String? response) {
+    command.completer.complete(response);
+    _processCommandQueue();
   }
 
   Future<void> nextGroup() async {
     if (!connected) return;
 
     if (_currentGroup != null) {
-      String groupId = _currentGroup!.maskHex;
+      //String groupId = _currentGroup!.maskHex;
       _currentGroup = null;
       _groupTimer?.cancel();
 
       DateTime before = DateTime.now();
       // Stop monitoring
-      await sendCommand(
-        'STOP', 
-        possibleResponses: ['STOPPED', '?']
-      );
+      await _sendCommand(Command('STOP', validResponses: ['STOPPED', '?']));
       _timings['stop'] = DateTime.now().difference(before).inMilliseconds;
 
       //await Future.delayed(const Duration(milliseconds: 10));
       _timings['total'] = DateTime.now().difference(_groupStartTime!).inMilliseconds;
 
-      model.log('$groupId: ${_timings['total']} (${_timings['init']}, ${_timings['stop']})', category: 2);
+      model.log('${_currentGroup!.name}: ${_timings['total']} (${_timings['init']}, ${_timings['stop']})', category: 2);
     }
 
     _timings.clear();
@@ -529,16 +532,33 @@ class Vehicle {
 
     TopicGroup group = groups[_currentGroupIndex!];
     
-    DateTime before = DateTime.now();
-    await sendCommand('AT CM ${group.maskHex}');
-    await sendCommand('AT CF ${group.filterHex}');
+    List<Topic> enabledTopics = group.topics.where((topic) => topic.isEnabled()).toList();
+    List<int> ids = enabledTopics.map((topic) => topic.id).toList();
 
-    _pendingTopics = group.topics.where((topic) => topic.shouldWait()).toList();
-    //model.log(_pendingTopics.map((t) => t.name).join(", "), category: 1);
+    int filter = ids[0];
+    for (int i = 1; i < ids.length; i++) {
+      filter = filter & ids[i];
+    }
     
+    int mask = ~ids[0];
+    for (int i = 1; i < ids.length; i++) {
+      mask = mask & ~ids[i];
+    }
+    mask = (mask | filter) & 0x7FF;
+
+    String filterHex = intToHex(filter, 3);
+    String maskHex = intToHex(mask, 3);
+
+    DateTime before = DateTime.now();
+    await _sendCommand(Command('AT CM $maskHex'));
+    await _sendCommand(Command('AT CF $filterHex'));
+
+    _pendingTopics = enabledTopics;
+    //_pendingTopics = enabledTopics.where((topic) => topic.important).toList();
+    model.log(_pendingTopics.map((t) => t.name).toList().toString(), category: 2);
+    
+    await _sendCommand(Command("AT MA"));
     _currentGroup = group;
-    
-    await monitorAll();
     _groupTimer = Timer(group.timeout, nextGroup);
     _timings['init'] = DateTime.now().difference(before).inMilliseconds;
   }
@@ -546,22 +566,22 @@ class Vehicle {
   void connect() async {
     if (connected || connecting) return;
 
-    if (btAddress == null && await bluetoothSerial.isAvailable == true) {
+    if (_btAddress == null && await bluetoothSerial.isAvailable == true) {
       var bondedDevices = await bluetoothSerial.getBondedDevices();
       if (bondedDevices.isNotEmpty) {
-        btAddress = bondedDevices[0].address;
+        _btAddress = bondedDevices[0].address;
       }
     }
 
-    if (btAddress != null) {
+    if (_btAddress != null) {
       connecting = true;
-      model.log('Connecting to $btAddress');
+      model.log('Connecting to $_btAddress');
 
       try {
-        var connection = await BluetoothConnection.toAddress(btAddress);
+        var connection = await BluetoothConnection.toAddress(_btAddress);
         if (connection.isConnected) {
           connected = true;
-          btConnection = connection;
+          _btConnection = connection;
           connection.input?.listen(processIncomingData);
         }
 
@@ -572,21 +592,20 @@ class Vehicle {
       connecting = false;
     }
 
-    if (btConnection != null && connected) {
+    if (_btConnection != null && connected) {
       model.log('Connected!');
       
       Future.delayed(const Duration(milliseconds: 50), () async {
         model.log('Initializing...');
-        await sendCommand("AT Z", waitForResponse: false);
+        await _sendCommand(Command("AT Z"));
         await Future.delayed(const Duration(seconds: 2));
         //await sendCommand("AT E0");
-        await sendCommand("AT SP6");
-        await sendCommand("AT CAF0");
-        await sendCommand("AT S0");
-        await sendCommand("AT H1");
-        //await sendCommand("AT CF 000");
+        await _sendCommand(Command("AT SP6"));
+        await _sendCommand(Command("AT CAF0"));
+        await _sendCommand(Command("AT S0"));
+        await _sendCommand(Command("AT H1"));
+        await _sendCommand(Command("AT CF 000"));
         //await sendCommand("AT CM 048");
-        initialized = true;
         model.log("Initialized!");
         
         nextGroup();
@@ -599,20 +618,22 @@ class Vehicle {
     }
   }
 
-  void close() async {
+  void disconnect() async {
     if (!connected) return;
 
-    initialized = false;
+    _currentGroup = null;
+    _commandTimer?.cancel();
+    _groupTimer?.cancel();
+
+    _sendCommand(Command("STOP", validResponses: ['STOPPED', '?']));
+    await _sendCommand(Command("AT Z"));
+
+    _btConnection?.close();
+    _btConnection?.dispose();
+    _btConnection = null;
+    
     connected = false;
     model.notify('connected');
-
-    await sendCommand("AT MA");
-    await sendCommand("AT Z");
-
-    btConnection?.close();
-    btConnection?.dispose();
-    btConnection = null;
-    _responseCompleter = null;
 
     //commandQueue.clear();
     //metrics.clear();
@@ -623,7 +644,7 @@ class Vehicle {
   void reconnect() {
     if (connecting) return;
 
-    close(); connect();
+    disconnect(); connect();
   }
 
   File getDataFile() => File('/storage/emulated/0/Download/data.txt');
@@ -631,8 +652,8 @@ class Vehicle {
   Future<void> startRecording() async {
     //if (!await Permission.manageExternalStorage.request().isGranted) return;
 
-    recordedData = "";
-    recordingStartMs = millis();
+    _recordedData = "";
+    _recordingStartMs = millis();
     recording = true;
     model.notify('recording');
   }
@@ -642,7 +663,7 @@ class Vehicle {
     model.notify('recording');
 
     final file = getDataFile();
-    await file.writeAsString(recordedData);
+    await file.writeAsString(_recordedData);
     model.log('Saved data to ${file.path}');
   }
 

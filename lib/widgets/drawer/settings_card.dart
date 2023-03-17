@@ -93,7 +93,7 @@ class SettingsCardContent extends StatelessWidget {
             ElevatedButton(
               child: const Text("DISCONNECT"),
               style: buttonStyleTwo,
-              onPressed: () => model?.vehicle.close(),
+              onPressed: () => model?.vehicle.disconnect(),
             ),
 
             const SizedBox(height: 5),

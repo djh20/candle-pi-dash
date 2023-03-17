@@ -21,15 +21,11 @@ class InfoFooter extends StatelessWidget {
         'soc', 
         'time', 
         'gps_distance',
-        'gps_lock',
-        'odometer',
-        'topic_group'
+        'gps_lock'
       ],
       builder: (context, model, properties) {
         final int range = model?.vehicle.metrics['range']?.value ?? 0;
         final int rangeAtLastCharge = model?.vehicle.metrics['range_at_last_charge']?.value ?? 0;
-        final int odometer = model?.vehicle.metrics['odometer']?.value ?? 0;
-        final String topicGroup = model?.vehicle.metrics['topic_group']?.value ?? "";
 
         final double soc = model?.vehicle.metrics['soc']?.value ?? 0;
         
@@ -90,21 +86,20 @@ class InfoFooter extends StatelessWidget {
               valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
             ),
             */
-            /*
+            
+            const MetricDisplay(
+              name: 'Travelled',
+              value: 'Disabled',
+              valueColor: Colors.grey,
+            ),
             const MetricDisplay(
               name: 'Efficiency',
               value: 'Disabled',
               valueColor: Colors.grey,
             ),
-            */
-            
             MetricDisplay(
               name: 'Charge',
               value: '${soc.toStringAsFixed(1)}%',
-            ),
-            MetricDisplay(
-              name: 'Odometer',
-              value: '$odometer km'
             ),
           ],
         );
