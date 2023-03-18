@@ -36,7 +36,8 @@ with TickerProviderStateMixin {
                 colors: [
                   Colors.green,
                   Colors.green.withOpacity(0)
-                ]
+                ],
+                stops: const [0, 0.5]
               ),
               TurnSignalEffect(
                 controller: _controller, 
@@ -44,7 +45,8 @@ with TickerProviderStateMixin {
                 colors: [
                   Colors.green.withOpacity(0),
                   Colors.green
-                ]
+                ],
+                stops: const [0.5, 1],
               )
             ],
           ),
@@ -57,12 +59,14 @@ with TickerProviderStateMixin {
 class TurnSignalEffect extends StatelessWidget {
   final AnimationController controller;
   final List<Color> colors;
+  final List<double> stops;
   final bool visible;
 
   const TurnSignalEffect({
     Key? key,
     required this.controller,
     required this.colors,
+    required this.stops,
     this.visible = true
   }) : super(key: key);
 
@@ -70,13 +74,13 @@ class TurnSignalEffect extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedOpacity(
       opacity: visible ? 1 : 0,
-      duration: const Duration(milliseconds: 100),
+      duration: const Duration(milliseconds: 200),
       child: FadeTransition(
         opacity: controller,
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              stops: const [0, 0.4],
+              stops: stops,
               colors: colors
             )
           )
