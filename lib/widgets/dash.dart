@@ -3,6 +3,7 @@ import 'package:candle_dash/widgets/cluster/charging_cluster.dart';
 import 'package:candle_dash/widgets/cluster/connecting_cluster.dart';
 import 'package:candle_dash/widgets/dilate_transition.dart';
 import 'package:candle_dash/widgets/drawer/drawer.dart';
+import 'package:candle_dash/widgets/turn_signal_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:candle_dash/widgets/cluster/driving_cluster.dart';
 import 'package:candle_dash/widgets/roof.dart';
@@ -40,6 +41,7 @@ class Dash extends StatelessWidget {
             ),
             const SideDrawer(),
             const Roof(),
+            const TurnSignalOverlay()
           ],
         );
       }

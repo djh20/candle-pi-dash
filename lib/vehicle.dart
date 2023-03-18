@@ -172,12 +172,12 @@ class Vehicle {
       Metric(id: "driver_door_open", defaultValue: false),
       Metric(id: "passenger_door_open", defaultValue: false),
       Metric(
-        id: "indicating_left", 
+        id: "left_turn_signal", 
         defaultValue: false, 
         //timeout: const Duration(seconds: 1)
       ),
       Metric(
-        id: "indicating_right", 
+        id: "right_turn_signal", 
         defaultValue: false, 
         //timeout: const Duration(seconds: 1)
       ),
@@ -466,8 +466,8 @@ class Vehicle {
       metrics['odometer']?.setValue((data[1] << 16) | (data[2] << 8) | data[3]);
 
     } else if (topic.id == 0x358) {
-      metrics['indicating_left']?.setValue((data[2] & 0x02) > 0);
-      metrics['indicating_right']?.setValue((data[2] & 0x04) > 0);
+      metrics['left_turn_signal']?.setValue((data[2] & 0x02) > 0);
+      metrics['right_turn_signal']?.setValue((data[2] & 0x04) > 0);
 
     } else if (topic.id == 0x292) {
       metrics['lead_acid_voltage']?.setValue(data[3] / 10);
