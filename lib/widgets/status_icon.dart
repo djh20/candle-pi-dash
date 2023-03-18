@@ -25,7 +25,7 @@ class StatusIcon extends StatelessWidget {
       curve: Curves.fastOutSlowIn,
       opacity: active ? 1 : 0,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: size),
+        constraints: BoxConstraints(maxHeight: size + 5),
         child: AnimatedFractionallySizedBox(
           duration: const Duration(milliseconds: 250),
           curve: Curves.fastOutSlowIn,
