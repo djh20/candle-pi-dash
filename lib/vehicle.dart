@@ -13,6 +13,7 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:collection/collection.dart';
 import 'package:wakelock/wakelock.dart';
+import 'package:geolocator/geolocator.dart';
 
 FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
 
@@ -185,7 +186,10 @@ class Vehicle {
       Metric(id: "parking_brake_engaged", defaultValue: false),
       Metric(id: "odometer"),
       Metric(id: "lead_acid_voltage"),
+      Metric(id: "gps_lock", defaultValue: false),
     ]);
+
+    _initGps();
   }
 
   void registerMetrics(List<Metric> metrics) {
@@ -277,34 +281,6 @@ class Vehicle {
     } else if (metric.id == 'range') {
       int range = metric.value;
       if (range > 0 && range <= 10) model.showAlert("low_range");
-
-    } else if (metric.id == 'gps_lat' || metric.id == 'gps_lng') {
-      double lat = metrics["gps_lat"]?.value;
-      double lng = metrics["gps_lng"]?.value;
-
-      const distance = Distance();
-      final oldPos = position;
-      final newPos = LatLng(lat, lng);
-      
-      final double distanceM = distance.as(
-        LengthUnit.Meter,
-        oldPos,
-        newPos
-      );
-
-      /// Update the map only if the vehicle has moved at least 5m.
-      /// This stops the map from moving and rotating when the vehicle is not
-      /// moving.
-      if (distanceM >= 5) {
-        Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
-        bearingRad = bearing.radians;
-        bearingDeg = bearing.degrees;
-
-        debugPrint("$oldPos -> $newPos = $bearingDeg");
-        model.updateMap(newPos, bearingDeg);
-      }
-
-      position = newPos;
 
     } else if (metric.id == 'gps_lock' && metric.value == 0) {
       speedLimit = null;
@@ -576,6 +552,9 @@ class Vehicle {
     if (_btAddress != null) {
       connecting = true;
       model.log('Connecting to $_btAddress');
+      
+      //final pos = await _determinePosition();
+      //model.log('${pos.latitude}, ${pos.longitude}');
 
       try {
         var connection = await BluetoothConnection.toAddress(_btAddress);
@@ -696,6 +675,90 @@ class Vehicle {
 
       processFrame(frame);
     }
+  }
+
+  /// Determine the current position of the device.
+  ///
+  /// When the location services are not enabled or permissions
+  /// are denied the `Future` will return an error.
+  Future<void> _initGps() async {
+    model.log('Initializing GPS...', category: 3);
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the 
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also where
+        // Android's shouldShowRequestPermissionRationale 
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error('Location permissions are denied');
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are denied forever, handle appropriately. 
+      return Future.error(
+        'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    model.log('Listening to position stream...', category: 3);
+
+    final LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high
+    );
+
+    Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+    (Position? position) {
+        /*
+        model.log(
+          position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}',
+          category: 3
+        );
+        */
+        metrics['gps_lock']?.setValue(position != null);
+        if (position == null) return;
+
+        _updatePosition(position.latitude, position.longitude);
+    });
+  }
+
+  void _updatePosition(double lat, double lng) {
+    const distance = Distance();
+    final oldPos = position;
+    final newPos = LatLng(lat, lng);
+    
+    final double distanceM = distance.as(
+      LengthUnit.Meter,
+      oldPos,
+      newPos
+    );
+
+    /// Update the map only if the vehicle has moved at least 5m.
+    /// This stops the map from moving and rotating when the vehicle is not
+    /// moving.
+    if (distanceM >= 5) {
+      Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
+      bearingRad = bearing.radians;
+      bearingDeg = bearing.degrees;
+
+      debugPrint("$oldPos -> $newPos = $bearingDeg");
+      model.updateMap(newPos, bearingDeg);
+    }
+
+    position = newPos;
   }
 
   int millis() => DateTime.now().millisecondsSinceEpoch;
