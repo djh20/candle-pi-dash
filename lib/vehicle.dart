@@ -20,7 +20,7 @@ FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
 class Vehicle {
   late AppModel model;
 
-  late List<TopicGroup> groups;
+  late List<TopicGroup> _groups;
   var metrics = <String, Metric>{};
 
   bool connected = false;
@@ -60,47 +60,33 @@ class Vehicle {
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
-    groups = [
+    final List<TopicGroup> uniqueGroups = [
       TopicGroup(
         name: "High Speed",
-        //mask: 0x048, 
-        //filter: 0x000,
-        timeout: const Duration(milliseconds: 500),
+        timeout: const Duration(milliseconds: 200),
         topics: [
           Topic(
             id: 0x421,
             name: "Shifter",
             bytes: 3,
-            isEnabled: () => metrics['speed']?.value < 10
-            //shouldWait: () => true
+            isEnabled: () => true
           ),
           Topic(
             id: 0x180,
             name: "Motor & Throttle",
             bytes: 8,
             isEnabled: () => metrics['gear']?.value > 0
-            //shouldWait: () => metrics['gear']?.value > 0
           ),
           Topic(
             id: 0x284,
             name: "Speed",
             bytes: 8,
             isEnabled: () => metrics['gear']?.value > 0
-            //shouldWait: () => metrics['gear']?.value > 0
-          ),
-          Topic(
-            id: 0x292,
-            name: "Lead Acid Battery",
-            bytes: 8,
-            isEnabled: () => true
-            //shouldWait: () => false
           ),
         ] 
       ),
       TopicGroup(
         name: "Low Speed #1",
-        //mask: 0x431, 
-        //filter: 0x401,
         timeout: const Duration(milliseconds: 100),
         topics: [
           Topic(
@@ -108,14 +94,12 @@ class Vehicle {
             name: "Climate Control",
             bytes: 8,
             isEnabled: () => true
-            //shouldWait: () => true
           ),
           Topic(
             id: 0x60D,
             name: "Doors",
             bytes: 8,
             isEnabled: () => metrics['speed']?.value == 0,
-            //shouldWait: () => metrics['gear']?.value == 0
           ),
           Topic(
             id: 0x5C5,
@@ -124,14 +108,11 @@ class Vehicle {
             isEnabled: () =>
               metrics['parking_brake_engaged']?.value == true || 
               metrics['speed']?.value == 0
-            //shouldWait: () => metrics['gear']?.value == 0
           )
         ] 
       ),
       TopicGroup(
         name: "Low Speed #2",
-        //mask: 0x114, 
-        //filter: 0x110,
         timeout: const Duration(milliseconds: 100),
         topics: [
           Topic(
@@ -139,18 +120,24 @@ class Vehicle {
             name: "Indicators & Headlights",
             bytes: 8,
             isEnabled: () => metrics['gear']?.value > 0
-            //shouldWait: () => true
           ),
           Topic(
             id: 0x5B3,
             name: "HV Battery",
             bytes: 8,
             isEnabled: () => true,
-            //important: false
-            //shouldWait: () => false
           ),
         ] 
       )
+    ];
+
+    /// TODO: Replace this with a more elegant solution.
+    /// Could add parameter to group for number of repeats?
+    _groups = [
+      uniqueGroups[0],
+      uniqueGroups[1],
+      uniqueGroups[0],
+      uniqueGroups[2]
     ];
     
     registerMetrics([
@@ -185,7 +172,6 @@ class Vehicle {
       Metric(id: "locked", defaultValue: false),
       Metric(id: "parking_brake_engaged", defaultValue: false),
       Metric(id: "odometer"),
-      Metric(id: "lead_acid_voltage"),
       Metric(id: "gps_lock", defaultValue: false),
     ]);
 
@@ -326,7 +312,7 @@ class Vehicle {
   }
 
   void processFrame(String frame) {
-    for (var group in groups) {
+    for (var group in _groups) {
       final Topic? frameTopic = 
         group.topics.firstWhereOrNull((topic) => frame.startsWith(topic.idHex));
 
@@ -383,6 +369,7 @@ class Vehicle {
           break;
       }
 
+      metrics['powered']?.setValue(true);
       metrics['gear']?.setValue(gear);
       metrics['eco']?.setValue(eco);
 
@@ -444,10 +431,6 @@ class Vehicle {
     } else if (topic.id == 0x358) {
       metrics['left_turn_signal']?.setValue((data[2] & 0x02) > 0);
       metrics['right_turn_signal']?.setValue((data[2] & 0x04) > 0);
-
-    } else if (topic.id == 0x292) {
-      metrics['lead_acid_voltage']?.setValue(data[3] / 10);
-      metrics['powered']?.setValue(true);
     }
   }
 
@@ -502,11 +485,11 @@ class Vehicle {
     _currentGroupIndex ??= 0;
     _currentGroupIndex = _currentGroupIndex! + 1;
 
-    if (_currentGroupIndex! >= groups.length) {
+    if (_currentGroupIndex! >= _groups.length) {
       _currentGroupIndex = 0;
     }
 
-    TopicGroup group = groups[_currentGroupIndex!];
+    TopicGroup group = _groups[_currentGroupIndex!];
     
     List<Topic> enabledTopics = group.topics.where((topic) => topic.isEnabled()).toList();
     List<int> ids = enabledTopics.map((topic) => topic.id).toList();
