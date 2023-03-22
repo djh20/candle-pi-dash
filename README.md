@@ -1,6 +1,7 @@
 # CANdle Dash
-A companion dash app for CANdle, made with Flutter.
-The app is intended to be used as a advanced dashboard display for the 2011 Nissan Leaf.
+An advanced dashboard display app for the ZE0 Nissan Leaf.
+
+This branch is compatible with the ELM327 Bluetooth ODB2 Scanner (CANdle is **not** required).
 
 **This is a personal project - it's not intended for public use. However, feel free to use it if you're able to get it working :)**
 
