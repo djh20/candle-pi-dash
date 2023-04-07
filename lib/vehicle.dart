@@ -512,7 +512,7 @@ class Vehicle {
   Future<bool> nextTask() async {
     if (!connected) return false;
 
-    if (_currentTaskIndex == null || _currentTaskIndex! >= _tasks.length) {
+    if (_currentTaskIndex == null || _currentTaskIndex! >= _tasks.length - 1) {
       _currentTaskIndex = 0;
     } else {
       _currentTaskIndex = _currentTaskIndex! + 1;
