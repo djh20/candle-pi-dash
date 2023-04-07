@@ -22,10 +22,10 @@ with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['left_turn_signal', 'right_turn_signal'],
+      properties: const ['indicating_left', 'indicating_right'],
       builder: (context, model, properties) {
-        final bool leftTurnSignal = model?.vehicle.metrics['left_turn_signal']?.value ?? false;
-        final bool rightTurnSignal = model?.vehicle.metrics['right_turn_signal']?.value ?? false;
+        final bool leftTurnSignal = model?.vehicle.metrics['indicating_left']?.value ?? false;
+        final bool rightTurnSignal = model?.vehicle.metrics['indicating_right']?.value ?? false;
 
         return IgnorePointer(
           child: Stack(

@@ -1,17 +1,19 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:candle_dash/can.dart';
 import 'package:candle_dash/constants.dart';
+import 'package:candle_dash/elm.dart';
 import 'package:candle_dash/model.dart';
 import 'package:candle_dash/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:collection/collection.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:wakelock/wakelock.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -20,8 +22,9 @@ FlutterBluetoothSerial bluetoothSerial = FlutterBluetoothSerial.instance;
 class Vehicle {
   late AppModel model;
 
-  late List<TopicGroup> _groups;
-  var metrics = <String, Metric>{};
+  final Map<String, Metric> metrics = {};
+  final Map<int, CanTopic> _topics = {};
+  final List<ElmTask> _tasks = [];
 
   bool connected = false;
   bool connecting = false;
@@ -42,16 +45,12 @@ class Vehicle {
 
   String _buffer = "";
 
-  final List<Command> _commandQueue = [];
-  Command? _latestCommand;
+  final _commandQueue = Queue<ElmCommand>();
+  ElmCommand? _latestCommand;
   Timer? _commandTimer;
   
-  TopicGroup? _currentGroup;
-  int? _currentGroupIndex;
-  Timer? _groupTimer;
-  DateTime? _groupStartTime;
-  final _timings = <String, int>{};
-  List<Topic> _pendingTopics = [];
+  ElmTask? _currentTask;
+  int? _currentTaskIndex;
 
   bool recording = false;
   int? _recordingStartMs;
@@ -60,91 +59,116 @@ class Vehicle {
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
-    final List<TopicGroup> uniqueGroups = [
-      TopicGroup(
-        name: "High Speed",
+    registerTopics([
+      CanTopic(
+        id: 0x180,
+        name: "Motor & Throttle",
+        bytes: 8,
+        //isEnabled: () => metrics['gear']?.value > 0
+      ),
+      CanTopic(
+        id: 0x284,
+        name: "Speed",
+        bytes: 8,
+        //isEnabled: () => metrics['gear']?.value > 0
+      ),
+      CanTopic(
+        id: 0x358,
+        name: "Indicators & Headlights",
+        bytes: 8,
+        //isEnabled: () => metrics['gear']?.value > 0
+      ),
+      CanTopic(
+        id: 0x421,
+        name: "Shifter",
+        bytes: 3,
+        //isEnabled: () => true
+      ),
+      CanTopic(
+        id: 0x54B,
+        name: "Climate Control",
+        bytes: 8,
+        //isEnabled: () => true
+      ),
+      CanTopic(
+        id: 0x5B3,
+        name: "HV Battery",
+        bytes: 8,
+        //isEnabled: () => true,
+      ),
+      CanTopic(
+        id: 0x5C5,
+        name: "Parking Brake & Odometer",
+        bytes: 8,
+        /*isEnabled: () =>
+          metrics['parking_brake_engaged']?.value == true || 
+          metrics['speed']?.value == 0*/
+      ),
+      CanTopic(
+        id: 0x60D,
+        name: "Doors",
+        bytes: 8,
+        //isEnabled: () => metrics['speed']?.value == 0,
+      ),
+    ]);
+
+    registerTasks([
+      ElmMonitorTask(
+        name: "Driving #1",
+        vehicle: this,
         timeout: const Duration(milliseconds: 200),
+        isEnabled: () => metrics['gear']?.value > 0,
         topics: [
-          Topic(
-            id: 0x421,
-            name: "Shifter",
-            bytes: 3,
-            isEnabled: () => true
-          ),
-          Topic(
-            id: 0x180,
-            name: "Motor & Throttle",
-            bytes: 8,
-            isEnabled: () => metrics['gear']?.value > 0
-          ),
-          Topic(
-            id: 0x284,
-            name: "Speed",
-            bytes: 8,
-            isEnabled: () => metrics['gear']?.value > 0
-          ),
+          _topics[0x284]!, // Speed
+          _topics[0x421]!, // Shifter
+          _topics[0x5B3]!, // HV Battery
+        ]
+      ),
+      ElmMonitorTask(
+        name: "Driving #2",
+        vehicle: this,
+        timeout: const Duration(milliseconds: 100),
+        isEnabled: () => metrics['gear']?.value > 0,
+        //cooldown: const Duration(milliseconds: 100),
+        topics: [
+          _topics[0x284]!, // Speed
+          _topics[0x54B]!, // Climate Control
+          _topics[0x5C5]!, // Park Brake & Odometer
+        ]
+      ),
+      ElmMonitorTask(
+        name: "Driving #3",
+        vehicle: this,
+        timeout: const Duration(milliseconds: 100),
+        isEnabled: () => metrics['gear']?.value > 0,
+        //cooldown: const Duration(milliseconds: 100),
+        topics: [
+          _topics[0x284]!, // Speed
+          _topics[0x358]!, // Indicators & Headlights
+          _topics[0x180]!, // Motor
         ] 
       ),
-      TopicGroup(
-        name: "Low Speed #1",
-        timeout: const Duration(milliseconds: 100),
+      ElmMonitorTask(
+        name: "Parked",
+        vehicle: this,
+        timeout: const Duration(milliseconds: 500),
+        isEnabled: () => metrics['gear']?.value == 0,
+        //cooldown: const Duration(milliseconds: 100),
         topics: [
-          Topic(
-            id: 0x54B,
-            name: "Climate Control",
-            bytes: 8,
-            isEnabled: () => true
-          ),
-          Topic(
-            id: 0x60D,
-            name: "Doors",
-            bytes: 8,
-            isEnabled: () => metrics['speed']?.value == 0,
-          ),
-          Topic(
-            id: 0x5C5,
-            name: "Parking Brake & Odometer",
-            bytes: 8,
-            isEnabled: () =>
-              metrics['parking_brake_engaged']?.value == true || 
-              metrics['speed']?.value == 0
-          )
-        ] 
-      ),
-      TopicGroup(
-        name: "Low Speed #2",
-        timeout: const Duration(milliseconds: 100),
-        topics: [
-          Topic(
-            id: 0x358,
-            name: "Indicators & Headlights",
-            bytes: 8,
-            isEnabled: () => metrics['gear']?.value > 0
-          ),
-          Topic(
-            id: 0x5B3,
-            name: "HV Battery",
-            bytes: 8,
-            isEnabled: () => true,
-          ),
+          _topics[0x421]!, // Shifter
+          _topics[0x5B3]!, // HV Battery
+          _topics[0x54B]!, // Climate Control
+          _topics[0x5C5]!, // Park Brake & Odometer
+          _topics[0x60D]!, // Doors
         ] 
       )
-    ];
-
-    /// TODO: Replace this with a more elegant solution.
-    /// Could add parameter to group for number of repeats?
-    _groups = [
-      uniqueGroups[0],
-      uniqueGroups[1],
-      uniqueGroups[0],
-      uniqueGroups[2]
-    ];
+    ]);
     
     registerMetrics([
       Metric(
         id: "powered", 
         defaultValue: false, 
-        timeout: const Duration(seconds: 2)
+        timeout: const Duration(seconds: 3)
       ),
       Metric(id: "gear"),
       Metric(id: "eco", defaultValue: false),
@@ -156,16 +180,16 @@ class Vehicle {
       Metric(id: "gids"),
       Metric(id: "soc", defaultValue: 0.0),
       Metric(id: "range"),
-      Metric(id: "fan_speed", timeout: const Duration(seconds: 2)),
+      Metric(id: "fan_speed", timeout: const Duration(seconds: 5)),
       Metric(id: "driver_door_open", defaultValue: false),
       Metric(id: "passenger_door_open", defaultValue: false),
       Metric(
-        id: "left_turn_signal", 
+        id: "indicating_left", 
         defaultValue: false, 
         //timeout: const Duration(seconds: 1)
       ),
       Metric(
-        id: "right_turn_signal", 
+        id: "indicating_right", 
         defaultValue: false, 
         //timeout: const Duration(seconds: 1)
       ),
@@ -178,11 +202,37 @@ class Vehicle {
     _initGps();
   }
 
+  void registerMetric(Metric metric) {
+    metric.onUpdate = metricUpdated;
+    metrics[metric.id] = metric;
+    model.log('Registered metric: ${metric.id}');
+  }
+
   void registerMetrics(List<Metric> metrics) {
     for (var metric in metrics) {
-      metric.onUpdate = metricUpdated;
-      this.metrics[metric.id] = metric;
-      model.log('Registered metric: ${metric.id}');
+      registerMetric(metric);
+    }
+  }
+
+  void registerTopic(CanTopic topic) {
+    _topics[topic.id] = topic;
+    model.log('Registered topic: ${topic.idHex}');
+  }
+
+  void registerTopics(List<CanTopic> topics) {
+    for (var topic in topics) {
+      registerTopic(topic);
+    }
+  }
+
+  void registerTask(ElmTask task) {
+    _tasks.add(task);
+    model.log('Registered task: ${task.name}');
+  }
+
+  void registerTasks(List<ElmTask> tasks) {
+    for (var task in tasks) {
+      registerTask(task);
     }
   }
 
@@ -287,8 +337,8 @@ class Vehicle {
         model.log("RX: $msg");
 
         if (msg == "BUFFER FULL") {
-          if (_currentGroup != null) {
-            _sendCommand(Command("AT MA"));
+          if (_currentTask?.status == ElmTaskStatus.running) {
+            sendCommand(ElmCommand("AT MA"));
           }
           
         } else {
@@ -312,36 +362,36 @@ class Vehicle {
   }
 
   void processFrame(String frame) {
-    for (var group in _groups) {
-      final Topic? frameTopic = 
-        group.topics.firstWhereOrNull((topic) => frame.startsWith(topic.idHex));
+    final CanTopic? frameTopic = 
+      _topics.values.firstWhereOrNull((topic) => frame.startsWith(topic.idHex));
 
-      if (frameTopic != null) {
-        String frameDataStr = frame.substring(frameTopic.idHex.length);
+    if (frameTopic != null) {
+      String frameDataStr = frame.substring(frameTopic.idHex.length);
 
-        if (frameDataStr.length == frameTopic.bytes * 2) {
-          model.log(frameTopic.name, category: 1);
+      if (frameDataStr.length == frameTopic.bytes * 2) {
+        model.log(frameTopic.name, category: 1);
 
-          final RegExp exp = RegExp(r'.{2}');
-          final Iterable<Match> matches = exp.allMatches(frameDataStr);
-          final frameData = 
-            matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
-          
-          processTopicData(frameTopic, frameData);
+        final RegExp exp = RegExp(r'.{2}');
+        final Iterable<Match> matches = exp.allMatches(frameDataStr);
+        final frameData = 
+          matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
+        
+        processTopicData(frameTopic, frameData);
+        
 
-          if (_currentGroup != null && _pendingTopics.remove(frameTopic)) {
-            model.log(_pendingTopics.map((t) => t.name).toList().toString(), category: 2);
-            if (_pendingTopics.isEmpty) nextGroup();
-          }
-        } else {
-          model.log('${frameTopic.name} (INVALID)', category: 1);
+        /*
+        if (_currentTask != null && _pendingTopics.remove(frameTopic)) {
+          model.log(_pendingTopics.map((t) => t.name).toList().toString(), category: 2);
+          if (_pendingTopics.isEmpty) nextTask();
         }
-        break;
+        */
+      } else {
+        model.log('${frameTopic.name} (INVALID)', category: 1);
       }
     }
   }
 
-  void processTopicData(Topic topic, List<int> data) {
+  void processTopicData(CanTopic topic, List<int> data) {
     if (topic.id == 0x421) {
       bool eco = false;
       int gear = 0;
@@ -429,12 +479,12 @@ class Vehicle {
       metrics['odometer']?.setValue((data[1] << 16) | (data[2] << 8) | data[3]);
 
     } else if (topic.id == 0x358) {
-      metrics['left_turn_signal']?.setValue((data[2] & 0x02) > 0);
-      metrics['right_turn_signal']?.setValue((data[2] & 0x04) > 0);
+      metrics['indicating_left']?.setValue((data[2] & 0x02) > 0);
+      metrics['indicating_right']?.setValue((data[2] & 0x04) > 0);
     }
   }
 
-  Future<String?> _sendCommand(Command command) {
+  Future<String?> sendCommand(ElmCommand command) {
     _commandQueue.add(command);
     if (_commandQueue.length == 1) _processCommandQueue();
 
@@ -445,8 +495,7 @@ class Vehicle {
     if (!connected || _commandQueue.isEmpty) return;
     if (_latestCommand?.completer.isCompleted == false) return;
 
-    final command = _commandQueue.first;
-    _commandQueue.remove(command);
+    final command = _commandQueue.removeFirst();
     _latestCommand = command;
     
     model.log('TX: ${command.text}');
@@ -455,71 +504,28 @@ class Vehicle {
     _commandTimer = Timer(command.timeout, () => _completeCommand(command, null));
   }
 
-  void _completeCommand(Command command, String? response) {
+  void _completeCommand(ElmCommand command, String? response) {
     command.completer.complete(response);
     _processCommandQueue();
   }
 
-  Future<void> nextGroup() async {
-    if (!connected) return;
+  Future<bool> nextTask() async {
+    if (!connected) return false;
 
-    if (_currentGroup != null) {
-      String groupName = _currentGroup!.name;
-      _currentGroup = null;
-      _groupTimer?.cancel();
-
-      DateTime before = DateTime.now();
-      // Stop monitoring
-      await _sendCommand(Command('STOP', validResponses: ['STOPPED', '?']));
-      _timings['stop'] = DateTime.now().difference(before).inMilliseconds;
-
-      //await Future.delayed(const Duration(milliseconds: 10));
-      _timings['total'] = DateTime.now().difference(_groupStartTime!).inMilliseconds;
-
-      model.log('$groupName: ${_timings['total']} (${_timings['init']}, ${_timings['stop']})', category: 2);
+    if (_currentTaskIndex == null || _currentTaskIndex! >= _tasks.length) {
+      _currentTaskIndex = 0;
+    } else {
+      _currentTaskIndex = _currentTaskIndex! + 1;
     }
 
-    _timings.clear();
-    
-    _groupStartTime = DateTime.now();
-    _currentGroupIndex ??= 0;
-    _currentGroupIndex = _currentGroupIndex! + 1;
-
-    if (_currentGroupIndex! >= _groups.length) {
-      _currentGroupIndex = 0;
+    final task = _tasks[_currentTaskIndex!];
+    if (task.isEnabled()) {
+      model.log(task.name, category: 2);
+      _currentTask = task;
+      await task.run();
     }
 
-    TopicGroup group = _groups[_currentGroupIndex!];
-    
-    List<Topic> enabledTopics = group.topics.where((topic) => topic.isEnabled()).toList();
-    List<int> ids = enabledTopics.map((topic) => topic.id).toList();
-
-    int filter = ids[0];
-    for (int i = 1; i < ids.length; i++) {
-      filter = filter & ids[i];
-    }
-    
-    int mask = ~ids[0];
-    for (int i = 1; i < ids.length; i++) {
-      mask = mask & ~ids[i];
-    }
-    mask = (mask | filter) & 0x7FF;
-
-    String filterHex = intToHex(filter, 3);
-    String maskHex = intToHex(mask, 3);
-
-    DateTime before = DateTime.now();
-    await _sendCommand(Command('AT CM $maskHex'));
-    await _sendCommand(Command('AT CF $filterHex'));
-
-    _pendingTopics = enabledTopics;
-    //_pendingTopics = enabledTopics.where((topic) => topic.important).toList();
-    model.log(_pendingTopics.map((t) => t.name).toList().toString(), category: 2);
-    
-    await _sendCommand(Command("AT MA"));
-    _currentGroup = group;
-    _groupTimer = Timer(group.timeout, nextGroup);
-    _timings['init'] = DateTime.now().difference(before).inMilliseconds;
+    return true;
   }
 
   void connect() async {
@@ -559,18 +565,18 @@ class Vehicle {
       
       Future.delayed(const Duration(milliseconds: 50), () async {
         model.log('Initializing...');
-        await _sendCommand(Command("AT Z"));
+        await sendCommand(ElmCommand("AT Z"));
         await Future.delayed(const Duration(seconds: 2));
         //await sendCommand("AT E0");
-        await _sendCommand(Command("AT SP6"));
-        await _sendCommand(Command("AT CAF0"));
-        await _sendCommand(Command("AT S0"));
-        await _sendCommand(Command("AT H1"));
+        await sendCommand(ElmCommand("AT SP6"));
+        await sendCommand(ElmCommand("AT CAF0"));
+        await sendCommand(ElmCommand("AT S0"));
+        await sendCommand(ElmCommand("AT H1"));
         //await _sendCommand(Command("AT CF 000"));
         //await sendCommand("AT CM 048");
         model.log("Initialized!");
         
-        nextGroup();
+        Future.doWhile(nextTask);
       });
 
       model.notify('connected');
@@ -583,12 +589,12 @@ class Vehicle {
   void disconnect() async {
     if (!connected) return;
 
-    _currentGroup = null;
-    _commandTimer?.cancel();
-    _groupTimer?.cancel();
+    //_currentTask = null;
+    //_commandTimer?.cancel();
+    await _currentTask?.complete();
 
-    _sendCommand(Command("STOP", validResponses: ['STOPPED', '?']));
-    await _sendCommand(Command("AT Z"));
+    //sendCommand(ElmCommand("STOP", validResponses: ['STOPPED', '?']));
+    await sendCommand(ElmCommand("AT Z"));
 
     _btConnection?.close();
     _btConnection?.dispose();

@@ -1,45 +1,21 @@
 import 'dart:async';
-
 import 'package:candle_dash/utils.dart';
 
-class TopicGroup {
-  final String name;
-  //final int mask;
-  //final int filter;
-  final Duration timeout;
-  final List<Topic> topics;
-
-  //late final String maskHex;
-  //late final String filterHex;
-
-  TopicGroup({
-    required this.name,
-    //required this.mask,
-    //required this.filter,
-    required this.timeout,
-    this.topics = const []
-  }) {
-    //maskHex = intToHex(mask, 3);
-    //filterHex = intToHex(filter, 3);
-  }
-}
-
-class Topic {
+class CanTopic {
   final int id;
   final String name;
   final int bytes;
-  //final bool Function() shouldWait;
-  //final bool important;
-  final bool Function() isEnabled;
+  //final bool Function() isEnabled;
+  final void Function(List<int> data, int frameIndex)? processFrame;
 
   late final String idHex;
 
-  Topic({
+  CanTopic({
     required this.id,
     required this.name,
     required this.bytes,
-    required this.isEnabled,
-    //this.important = true
+    //required this.isEnabled,
+    this.processFrame
   }) {
     idHex = intToHex(id, 3);
   }
@@ -77,19 +53,4 @@ class Metric {
   }
 
   void reset() => setValue(defaultValue);
-}
-
-class Command {
-  late final String text;
-  final Duration timeout;
-  late final List<String> validResponses;
-  final completer = Completer<String?>();
-
-  Command(String text, {
-    this.timeout = const Duration(milliseconds: 200),
-    List<String>? validResponses
-  }) {
-    this.text = text.replaceAll(' ', '').toUpperCase();
-    this.validResponses = validResponses ?? [this.text];
-  }
 }
