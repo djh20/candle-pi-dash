@@ -29,9 +29,7 @@ class InfoFooter extends StatelessWidget {
 
         final double soc = model?.vehicle.metrics['soc']?.value ?? 0;
         
-        final double gpsDistance = 
-          (model?.vehicle.metrics['gps_distance']?.value ?? 0) / 1000;
-
+        final double gpsDistance = model?.vehicle.metrics['gps_distance']?.value ?? 0;
         final String gpsDistanceFormatted = gpsDistance.toStringAsFixed(1);
 
         final bool gpsLocked = model?.vehicle.metrics['gps_lock']?.value ?? false;
@@ -67,7 +65,6 @@ class InfoFooter extends StatelessWidget {
             ),
             
             const SizedBox(height: 5),
-            /*
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 500),
               style: TextStyle(
@@ -78,24 +75,10 @@ class InfoFooter extends StatelessWidget {
                 value: '$gpsDistanceFormatted km',
               ),
             ),
-            */
-            /*
             MetricDisplay(
               name: 'Efficiency',
               value: rangeVariationText,
               valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
-            ),
-            */
-            
-            const MetricDisplay(
-              name: 'Travelled',
-              value: 'Disabled',
-              valueColor: Colors.grey,
-            ),
-            const MetricDisplay(
-              name: 'Efficiency',
-              value: 'Disabled',
-              valueColor: Colors.grey,
             ),
             MetricDisplay(
               name: 'Charge',

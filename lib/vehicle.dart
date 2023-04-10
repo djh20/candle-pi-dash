@@ -197,6 +197,7 @@ class Vehicle {
       Metric(id: "parking_brake_engaged", defaultValue: false),
       Metric(id: "odometer"),
       Metric(id: "gps_lock", defaultValue: false),
+      Metric(id: "gps_distance", defaultValue: 0.0),
     ]);
 
     _initGps();
@@ -735,16 +736,19 @@ class Vehicle {
       newPos
     );
 
-    /// Update the map only if the vehicle has moved at least 5m.
+    /// Update the map only if the vehicle has moved at least 2m.
     /// This stops the map from moving and rotating when the vehicle is not
     /// moving.
-    if (distanceM >= 5) {
+    if (distanceM >= 2) {
       Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
       bearingRad = bearing.radians;
       bearingDeg = bearing.degrees;
 
       debugPrint("$oldPos -> $newPos = $bearingDeg");
       model.updateMap(newPos, bearingDeg);
+
+      final double gpsDistance = metrics['gps_distance']?.value ?? 0.0;
+      metrics['gps_distance']?.setValue(gpsDistance + (distanceM / 1000));
     }
 
     position = newPos;
