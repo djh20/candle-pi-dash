@@ -106,7 +106,7 @@ class Vehicle {
       ),
       CanTopic(
         id: 0x60D,
-        name: "Doors",
+        name: "Doors & Vehicle State",
         bytes: 8,
         //isEnabled: () => metrics['speed']?.value == 0,
       ),
@@ -165,11 +165,7 @@ class Vehicle {
     ]);
     
     registerMetrics([
-      Metric(
-        id: "powered", 
-        defaultValue: false, 
-        timeout: const Duration(seconds: 3)
-      ),
+      Metric(id: "powered", defaultValue: false),
       Metric(id: "gear"),
       Metric(id: "eco", defaultValue: false),
       Metric(id: "speed", defaultValue: 0.0),
@@ -420,7 +416,6 @@ class Vehicle {
           break;
       }
 
-      metrics['powered']?.setValue(true);
       metrics['gear']?.setValue(gear);
       metrics['eco']?.setValue(eco);
 
@@ -456,10 +451,10 @@ class Vehicle {
       metrics['fan_speed']?.setValue(data[4] >> 3);
 
     } else if (topic.id == 0x60D) {
+      metrics['powered']?.setValue(((data[1] >> 1) & 0x03) == 3);
       metrics['driver_door_open']?.setValue((data[0] & 0x10) > 0);
       metrics['passenger_door_open']?.setValue((data[0] & 0x08) > 0);
 
-      //metrics['powered']?.setValue(((data[1] >> 1) & 0x03) == 3);
       //metrics['indicating_left']?.setValue((data[2] & 0x40) > 0);
       //metrics['indicating_right']?.setValue((data[2] & 0x20) > 0);
 
