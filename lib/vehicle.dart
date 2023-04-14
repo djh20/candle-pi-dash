@@ -186,12 +186,12 @@ class Vehicle {
       Metric(
         id: "indicating_left", 
         defaultValue: false, 
-        //timeout: const Duration(seconds: 1)
+        timeout: const Duration(seconds: 5)
       ),
       Metric(
         id: "indicating_right", 
         defaultValue: false, 
-        //timeout: const Duration(seconds: 1)
+        timeout: const Duration(seconds: 5)
       ),
       Metric(id: "locked", defaultValue: false),
       Metric(id: "parking_brake_engaged", defaultValue: false),
