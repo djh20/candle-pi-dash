@@ -14,8 +14,8 @@ with TickerProviderStateMixin {
   
   late final AnimationController _controller = AnimationController(
     duration: const Duration(milliseconds: 500),
-    upperBound: 0.7,
-    lowerBound: 0.2,
+    upperBound: 0.8,
+    lowerBound: 0.3,
     vsync: this,
   )..repeat(reverse: true);
 
