@@ -36,7 +36,7 @@ class Vehicle {
   int? displayedSpeedLimit;
   int displayedSpeedLimitAge = 0;
 
-  LatLng position = LatLng(0, 0);
+  LatLng? position;
   double bearingRad = 0;
   double bearingDeg = 0;
   
@@ -176,6 +176,7 @@ class Vehicle {
       Metric(id: "gids"),
       Metric(id: "soc", defaultValue: 0.0),
       Metric(id: "range"),
+      Metric(id: "range_at_last_charge"),
       Metric(id: "fan_speed", timeout: const Duration(seconds: 5)),
       Metric(id: "driver_door_open", defaultValue: false),
       Metric(id: "passenger_door_open", defaultValue: false),
@@ -291,6 +292,9 @@ class Vehicle {
         model.speedingStartTime = null;
       }
     
+    } else if (metric.id == 'gear' && metric.value > 0 && metrics['range_at_last_charge']?.value == 0) {
+      metrics['range_at_last_charge']?.setValue(metrics['range']?.value);
+    
     /*
     } else if (metric.id == 'fan_speed' && metric.value > 0) {
       model.showAlert("cc_on");
@@ -326,34 +330,36 @@ class Vehicle {
 
   void processIncomingData(Uint8List data) {
     for (var charCode in data) {
-      if (charCode != 13) {
+      if (charCode == 13) {
+        if (_buffer.isNotEmpty) {
+          String msg = _buffer.replaceAll('>', '');
+          model.log("RX: $msg");
+
+          if (msg == "BUFFER FULL") {
+            if (_currentTask?.status == ElmTaskStatus.running) {
+              sendCommand(ElmCommand("AT MA"));
+            }
+            
+          } else {
+            if (recording) {
+              int ms = millis() - _recordingStartMs!;
+              _recordedData += '$ms\t$msg\n';
+            }
+
+            processFrame(msg);
+          }
+
+          final bool waitingForResponse = _latestCommand?.completer.isCompleted == false;
+          if (waitingForResponse && _latestCommand!.validResponses.contains(msg)) {
+            _commandTimer?.cancel();
+            _completeCommand(_latestCommand!, msg);
+          }
+
+          _buffer = "";
+        }
+
+      } else if (charCode != 10 && charCode != 62) { // Ignore '\n' and '>'
         _buffer += String.fromCharCode(charCode);
-
-      } else if (_buffer.isNotEmpty) {
-        String msg = _buffer.replaceAll('>', '');
-        model.log("RX: $msg");
-
-        if (msg == "BUFFER FULL") {
-          if (_currentTask?.status == ElmTaskStatus.running) {
-            sendCommand(ElmCommand("AT MA"));
-          }
-          
-        } else {
-          if (recording) {
-            int ms = millis() - _recordingStartMs!;
-            _recordedData += '$ms\t$msg\n';
-          }
-
-          processFrame(msg);
-        }
-
-        final bool waitingForResponse = _latestCommand?.completer.isCompleted == false;
-        if (waitingForResponse && _latestCommand!.validResponses.contains(msg)) {
-          _commandTimer?.cancel();
-          _completeCommand(_latestCommand!, msg);
-        }
-
-        _buffer = "";
       }
     }
   }
@@ -567,6 +573,7 @@ class Vehicle {
         await sendCommand(ElmCommand("AT SP6"));
         await sendCommand(ElmCommand("AT CAF0"));
         await sendCommand(ElmCommand("AT S0"));
+        await sendCommand(ElmCommand("AT L1"));
         await sendCommand(ElmCommand("AT H1"));
         //await _sendCommand(Command("AT CF 000"));
         //await sendCommand("AT CM 048");
@@ -701,7 +708,7 @@ class Vehicle {
 
     model.log('Listening to position stream...', category: 3);
 
-    final LocationSettings locationSettings = LocationSettings(
+    const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high
     );
 
@@ -724,26 +731,33 @@ class Vehicle {
     const distance = Distance();
     final oldPos = position;
     final newPos = LatLng(lat, lng);
-    
-    final double distanceM = distance.as(
-      LengthUnit.Meter,
-      oldPos,
-      newPos
-    );
 
-    /// Update the map only if the vehicle has moved at least 2m.
-    /// This stops the map from moving and rotating when the vehicle is not
-    /// moving.
-    if (distanceM >= 2) {
-      Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
-      bearingRad = bearing.radians;
-      bearingDeg = bearing.degrees;
+    if (oldPos != null) {
+      final double distanceKm = distance.as(
+        LengthUnit.Kilometer,
+        oldPos,
+        newPos
+      );
 
-      debugPrint("$oldPos -> $newPos = $bearingDeg");
-      model.updateMap(newPos, bearingDeg);
+      /// Update the map only if the vehicle has moved at least 1m.
+      /// This stops the map from moving and rotating when the vehicle is not
+      /// moving.
+      if (distanceKm >= 0.001) {
+        Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
+        bearingRad = bearing.radians;
+        bearingDeg = bearing.degrees;
 
-      final double gpsDistance = metrics['gps_distance']?.value ?? 0.0;
-      metrics['gps_distance']?.setValue(gpsDistance + (distanceM / 1000));
+        debugPrint("$oldPos -> $newPos = $bearingDeg");
+        model.updateMap(newPos, bearingDeg);
+        
+        if (distanceKm <= 100) {
+          final double gpsDistance = metrics['gps_distance']?.value ?? 0.0;
+          metrics['gps_distance']?.setValue(gpsDistance + distanceKm);
+        }
+      }
+      
+    } else {
+      model.updateMap(newPos, 0);
     }
 
     position = newPos;
