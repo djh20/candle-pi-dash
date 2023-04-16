@@ -193,7 +193,11 @@ class Vehicle {
       Metric(id: "locked", defaultValue: false),
       Metric(id: "parking_brake_engaged", defaultValue: false),
       Metric(id: "odometer"),
-      Metric(id: "gps_lock", defaultValue: false),
+      Metric(
+        id: "gps_lock",
+        defaultValue: false,
+        timeout: const Duration(seconds: 30)
+      ),
       Metric(id: "gps_distance", defaultValue: 0.0),
     ]);
 
