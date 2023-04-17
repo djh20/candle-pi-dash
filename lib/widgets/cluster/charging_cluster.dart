@@ -176,14 +176,13 @@ class ChargeInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const [
-        'motor_power', 
+        'charge_power', 
         'remaining_charge_time', 
         'soc',
         'charge_status'
       ],
       builder: (context, model, properties) {
-        final double powerOutput = model?.vehicle.metrics['motor_power']?.value ?? 0;
-        final double powerInput = max(-powerOutput, 0);
+        final double power = model?.vehicle.metrics['charge_power']?.value ?? 0.0;
         final double socPercent = model?.vehicle.metrics['soc']?.value ?? 0;
         final int chargeStatus = model?.vehicle.metrics['charge_status']?.value ?? 0;
 
@@ -191,8 +190,8 @@ class ChargeInfo extends StatelessWidget {
           minutes: model?.vehicle.metrics['remaining_charge_time']?.value ?? 0
         );
 
-        bool chargeFinished = (chargeStatus == 2);
-        bool chargeAlmostFinished = (socPercent >= 90) && (chargeStatus == 1);
+        bool chargeFinished = (chargeStatus == 3);
+        bool chargeAlmostFinished = (socPercent >= 90) && (chargeStatus == 2);
         String chargeTimeText = "";
 
         if (chargeTime.inMinutes > 0) {
@@ -213,7 +212,7 @@ class ChargeInfo extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 5),
               child: MetricDisplay(
                 name: "Charge Power",
-                value: "${powerInput.round()} kW",
+                value: "${power.round()} kW",
               ),
             ),
 
@@ -271,7 +270,7 @@ class ChargeIcon extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['charge_status'],
       builder: (context, model, properties) {
-        final bool charging = model?.vehicle.metrics['charge_status']?.value == 1;
+        final bool charging = model?.vehicle.metrics['charge_status']?.value == 2;
 
         return Icon(
           Icons.bolt_rounded, 

@@ -57,7 +57,7 @@ class ElmMonitorTask extends ElmTask {
     required super.timeout,
     required super.isEnabled,
     super.cooldown,
-    this.topics = const []
+    required this.topics
   });
 
   @override
@@ -108,7 +108,10 @@ class ElmMonitorTask extends ElmTask {
 }
 
 class ElmPollTask extends ElmTask {
-  CanTopic topic;
+  final CanTopic topic;
+  final int header;
+  final int flowDelay;
+  final List<String> requests;
 
   ElmPollTask({
     required super.name,
@@ -116,8 +119,39 @@ class ElmPollTask extends ElmTask {
     required super.timeout,
     required super.isEnabled,
     super.cooldown,
-    required this.topic
+    required this.topic,
+    required this.header,
+    this.flowDelay = 0,
+    required this.requests
   });
+  
+  @override
+  Future<void> run() async {
+    status = ElmTaskStatus.running;
+    
+    await vehicle.sendCommand(ElmCommand('AT AR'));
+    await vehicle.sendCommand(ElmCommand('AT FC SD 3000' + intToHex(flowDelay, 2)));
+    await vehicle.sendCommand(ElmCommand('AT SH ' + intToHex(header, 3)));
+    await vehicle.sendCommand(ElmCommand('AT FC SH ' + intToHex(header, 3)));
+    
+    for (var request in requests) {
+      await vehicle.sendCommand(
+        ElmCommand(
+          request,
+          validResponses: [],
+          timeout: const Duration(seconds: 2)
+        )
+      );
+    }
+
+    return super.run();
+  }
+
+  @override
+  Future<void> complete() async {
+    if (status != ElmTaskStatus.running) return;
+    await super.complete();
+  }
   
   @override
   void processTopicData(CanTopic topic, List<int> data) {

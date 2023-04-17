@@ -15,10 +15,10 @@ class Dash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['connected', 'plugged_in', 'drawer'],
+      properties: const ['connected', 'charge_status', 'drawer'],
       builder: (context, model, properties) {
         final bool connected = (model?.vehicle.connected == true);
-        final bool pluggedIn = model?.vehicle.metrics['plugged_in']?.value ?? false;
+        final bool pluggedIn = model?.vehicle.metrics['charge_status']?.value > 0;
         
         return Stack(
           fit: StackFit.expand,

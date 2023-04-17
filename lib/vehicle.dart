@@ -110,6 +110,11 @@ class Vehicle {
         bytes: 8,
         //isEnabled: () => metrics['speed']?.value == 0,
       ),
+      CanTopic(
+        id: 0x793,
+        name: "Charger",
+        bytes: 8
+      )
     ]);
 
     registerTasks([
@@ -161,6 +166,16 @@ class Vehicle {
           _topics[0x5C5]!, // Park Brake & Odometer
           _topics[0x60D]!, // Doors
         ] 
+      ),
+      ElmPollTask(
+        name: "Charger",
+        vehicle: this,
+        timeout: const Duration(seconds: 2),
+        cooldown: const Duration(seconds: 5),
+        isEnabled: () => metrics['gear']?.value == 0,
+        header: 0x792,
+        requests: ["03221210", "03221230"],
+        topic: _topics[0x793]!
       )
     ]);
     
@@ -172,6 +187,10 @@ class Vehicle {
       Metric(id: "fl_speed", defaultValue: 0.0),
       Metric(id: "fr_speed", defaultValue: 0.0),
       Metric(id: "motor_power", defaultValue: 0.0),
+      Metric(id: "charge_power", defaultValue: 0.0),
+      Metric(id: "charge_current", defaultValue: 0.0),
+      Metric(id: "charge_voltage", defaultValue: 0.0),
+      Metric(id: "charge_status"),
       Metric(id: "soh"),
       Metric(id: "gids"),
       Metric(id: "soc", defaultValue: 0.0),
@@ -327,6 +346,31 @@ class Vehicle {
       speedLimit = null;
       displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
+
+    } else if (metric.id == 'charge_current' || metric.id == 'charge_voltage') {
+      final double current = metrics['charge_current']?.value;
+      final double voltage = metrics['charge_voltage']?.value;
+      final double powerKw = (current * voltage) / 1000;
+      metrics['charge_power']?.setValue(powerKw);
+
+      final Metric chargeStatus = metrics['charge_status']!;
+
+      if (voltage >= 50) {
+        if (chargeStatus.value == 0) {
+          chargeStatus.setValue(1);
+        }
+
+        if (powerKw >= 1 && chargeStatus.value == 1) {
+          chargeStatus.setValue(2);
+        }
+
+        if (powerKw == 0 && chargeStatus.value == 2) {
+          chargeStatus.setValue(3);
+        }
+
+      } else {
+        chargeStatus.setValue(0);
+      }
     }
     
     model.notify(metric.id);
@@ -384,7 +428,7 @@ class Vehicle {
           matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
         
         processTopicData(frameTopic, frameData);
-        
+        _currentTask?.processTopicData(frameTopic, frameData);
 
         /*
         if (_currentTask != null && _pendingTopics.remove(frameTopic)) {
@@ -487,6 +531,17 @@ class Vehicle {
     } else if (topic.id == 0x358) {
       metrics['indicating_left']?.setValue((data[2] & 0x02) > 0);
       metrics['indicating_right']?.setValue((data[2] & 0x04) > 0);
+
+    } else if (topic.id == 0x793) {
+      final type = data[3];
+      if (type == 0x10) {
+        final current = ((data[4] << 8) | data[5]) / 16;
+        if (current < 150) metrics['charge_current']?.setValue(current);
+
+      } else if (type == 0x30) {
+        final voltage = ((data[4] << 8) | data[5]) / 128;
+        metrics['charge_voltage']?.setValue(voltage);
+      }
     }
   }
 
