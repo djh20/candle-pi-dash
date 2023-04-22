@@ -90,32 +90,8 @@ class InsightsCardContent extends StatelessWidget {
                     unit: 'kW',
                     scale: 0.9
                   ),
-                  const SizedBox(height: 5),
-                  UnitText(
-                    batteryTemp.round().toString(),
-                    unit: '°C',
-                    scale: 0.65
-                  )
                 ],
               ),
-              Positioned(
-                top: 19,
-                left: 110,
-                child: UnitText(
-                  motorTemp.round().toString(),
-                  unit: '°C',
-                  scale: 0.4
-                ),
-              ),
-              Positioned(
-                top: 56,
-                left: 106,
-                child: UnitText(
-                  inverterTemp.round().toString(),
-                  unit: '°C',
-                  scale: 0.4
-                ),
-              )
             ]
           ),
         );
