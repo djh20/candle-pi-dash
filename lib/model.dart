@@ -124,7 +124,7 @@ class AppModel extends PropertyChangeNotifier<String> {
 
   @override
   void dispose() {
-    vehicle.disconnect();
+    vehicle.dispose();
     super.dispose();
   }
 

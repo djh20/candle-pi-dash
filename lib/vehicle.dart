@@ -56,13 +56,21 @@ class Vehicle {
   int? _recordingStartMs;
   String _recordedData = "";
 
+  late StreamSubscription<Position> _positionSubscription;
+
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
 
     registerTopics([
       CanTopic(
+        id: 0x176,
+        name: "Motor Voltage",
+        bytes: 7,
+        //isEnabled: () => metrics['gear']?.value > 0
+      ),
+      CanTopic(
         id: 0x180,
-        name: "Motor & Throttle",
+        name: "Motor Current & Throttle",
         bytes: 8,
         //isEnabled: () => metrics['gear']?.value > 0
       ),
@@ -150,7 +158,8 @@ class Vehicle {
         topics: [
           _topics[0x284]!, // Speed
           _topics[0x358]!, // Indicators & Headlights
-          _topics[0x180]!, // Motor
+          _topics[0x176]!, // Motor Voltage
+          _topics[0x180]!, // Motor Current
         ] 
       ),
       ElmMonitorTask(
@@ -187,6 +196,8 @@ class Vehicle {
       Metric(id: "fl_speed", defaultValue: 0.0),
       Metric(id: "fr_speed", defaultValue: 0.0),
       Metric(id: "motor_power", defaultValue: 0.0),
+      Metric(id: "motor_current", defaultValue: 0.0),
+      Metric(id: "motor_voltage", defaultValue: 0.0),
       Metric(id: "charge_power", defaultValue: 0.0),
       Metric(id: "charge_current", defaultValue: 0.0),
       Metric(id: "charge_voltage", defaultValue: 0.0),
@@ -342,7 +353,14 @@ class Vehicle {
       int range = metric.value;
       if (range > 0 && range <= 10) model.showAlert("low_range");
 
-    } else if (metric.id == 'gps_lock' && metric.value == 0) {
+    } else if (metric.id == 'motor_current' || metric.id == 'motor_voltage') {
+      double current = metrics['motor_current']?.value;
+      double voltage = metrics['motor_voltage']?.value;
+
+      // TODO: Fix current and voltage values so that division by 8.5 isn't needed.
+      metrics['motor_power']?.setValue(((current * voltage) / 8.5) / 1000);
+
+    } else if (metric.id == 'gps_lock' && metric.value == false) {
       speedLimit = null;
       displayedSpeedLimitAge = 999999;
       model.notify("speedLimit");
@@ -358,6 +376,7 @@ class Vehicle {
       if (voltage >= 50) {
         if (chargeStatus.value == 0) {
           chargeStatus.setValue(1);
+          metrics['range_at_last_charge']?.setValue(0);
         }
 
         if (powerKw >= 1 && chargeStatus.value == 1) {
@@ -473,15 +492,17 @@ class Vehicle {
       metrics['gear']?.setValue(gear);
       metrics['eco']?.setValue(eco);
 
+    } else if (topic.id == 0x176) {
+      final int rawVoltage = (data[2] << 8) | data[3];
+      metrics['motor_voltage']?.setValue(rawVoltage / 20.0);
+    
     } else if (topic.id == 0x180) {
-      int rawPower = (data[2] << 8) | data[3];
-      if ((rawPower & 0x8000) > 0) {
-        rawPower = -(~rawPower & 0xFFFF);
+      int rawCurrent = (data[2] << 8) | data[3];
+      if ((rawCurrent & 0x8000) > 0) {
+        rawCurrent = -(~rawCurrent & 0xFFFF);
       }
 
-      // TODO: Make this more accurate.
-      double power = rawPower / 200;
-      metrics['motor_power']?.setValue(power);
+      metrics['motor_current']?.setValue(rawCurrent / 2.0);
 
     } else if (topic.id == 0x284) {
       double frontRightSpeed = ((data[0] << 8) | data[1]) / 208;
@@ -677,6 +698,11 @@ class Vehicle {
     disconnect(); connect();
   }
 
+  void dispose() {
+    disconnect();
+    _positionSubscription.cancel();
+  }
+
   File getDataFile() => File('/storage/emulated/0/Download/data.txt');
 
   Future<void> startRecording() async {
@@ -768,21 +794,23 @@ class Vehicle {
     model.log('Listening to position stream...', category: 3);
 
     const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 1
     );
 
-    Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+    _positionSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
     (Position? position) {
-        /*
-        model.log(
-          position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}',
-          category: 3
-        );
-        */
-        metrics['gps_lock']?.setValue(position != null);
-        if (position == null) return;
+      /*
+      model.log(
+        position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}',
+        category: 3
+      );
+      */
+      debugPrint(position.toString());
+      metrics['gps_lock']?.setValue(position != null);
+      if (position == null) return;
 
-        _updatePosition(position.latitude, position.longitude);
+      _updatePosition(position.latitude, position.longitude);
     });
   }
 
@@ -798,23 +826,18 @@ class Vehicle {
         newPos
       );
 
-      /// Update the map only if the vehicle has moved at least 1m.
-      /// This stops the map from moving and rotating when the vehicle is not
-      /// moving.
-      if (distanceKm >= 0.001) {
-        Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
-        bearingRad = bearing.radians;
-        bearingDeg = bearing.degrees;
+      Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
+      bearingRad = bearing.radians;
+      bearingDeg = bearing.degrees;
 
-        debugPrint("$oldPos -> $newPos = $bearingDeg");
-        model.updateMap(newPos, bearingDeg);
-        
-        if (distanceKm <= 100) {
-          final double gpsDistance = metrics['gps_distance']?.value ?? 0.0;
-          metrics['gps_distance']?.setValue(gpsDistance + distanceKm);
-        }
-      }
+      debugPrint("$oldPos -> $newPos = $bearingDeg");
+      model.updateMap(newPos, bearingDeg);
       
+      if (distanceKm <= 100) {
+        final double gpsDistance = metrics['gps_distance']?.value ?? 0.0;
+        metrics['gps_distance']?.setValue(gpsDistance + distanceKm);
+      }
+
     } else {
       model.updateMap(newPos, 0);
     }
