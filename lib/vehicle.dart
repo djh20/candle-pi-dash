@@ -821,10 +821,10 @@ class Vehicle {
 
     if (oldPos != null) {
       final double distanceKm = distance.as(
-        LengthUnit.Kilometer,
+        LengthUnit.Meter,
         oldPos,
         newPos
-      );
+      ) / 1000;
 
       Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
       bearingRad = bearing.radians;
@@ -832,7 +832,7 @@ class Vehicle {
 
       debugPrint("$oldPos -> $newPos = $bearingDeg");
       model.updateMap(newPos, bearingDeg);
-      
+
       if (distanceKm <= 100) {
         final double gpsDistance = metrics['gps_distance']?.value ?? 0.0;
         metrics['gps_distance']?.setValue(gpsDistance + distanceKm);
