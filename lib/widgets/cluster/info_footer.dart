@@ -65,24 +65,50 @@ class InfoFooter extends StatelessWidget {
             ),
             
             const SizedBox(height: 5),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 500),
-              style: TextStyle(
-                color: gpsLocked ? contrasting : theme.hintColor
-              ),
-              child: MetricDisplay(
-                name: 'Travelled',
-                value: '$gpsDistanceFormatted km',
-              ),
-            ),
-            MetricDisplay(
-              name: 'Efficiency',
-              value: rangeVariationText,
-              valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
-            ),
             MetricDisplay(
               name: 'Charge',
               value: '${soc.toStringAsFixed(1)}%',
+            ),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 500),
+                  opacity: gpsLocked ? 1 : 0.1,
+                  child: Column(
+                    children: [
+                      MetricDisplay(
+                        name: 'Travelled',
+                        value: '$gpsDistanceFormatted km',
+                      ),
+                      MetricDisplay(
+                        name: 'Efficiency',
+                        value: rangeVariationText,
+                        valueColor: (rangeVariation >= 0) ? Colors.green : Colors.red,
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 500),
+                  opacity: gpsLocked ? 0 : 1,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.all(Radius.circular(8))
+                    ),
+                    child: const Text(
+                      "GPS Unavailable",
+                      style: TextStyle(
+                        fontSize: 18, 
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black
+                      )
+                    ),
+                  )
+                )
+              ],
             ),
           ],
         );
