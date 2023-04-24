@@ -139,7 +139,7 @@ class ElmPollTask extends ElmTask {
         ElmCommand(
           request,
           validResponses: [],
-          timeout: const Duration(seconds: 2)
+          timeout: const Duration(milliseconds: 200)
         )
       );
     }
