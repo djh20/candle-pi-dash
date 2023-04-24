@@ -373,7 +373,7 @@ class Vehicle {
 
       final Metric chargeStatus = metrics['charge_status']!;
 
-      if (voltage >= 50) {
+      if (current > 0) {
         if (chargeStatus.value == 0) {
           chargeStatus.setValue(1);
           metrics['range_at_last_charge']?.setValue(0);
@@ -655,6 +655,7 @@ class Vehicle {
         await sendCommand(ElmCommand("AT S0"));
         await sendCommand(ElmCommand("AT L1"));
         await sendCommand(ElmCommand("AT H1"));
+        await sendCommand(ElmCommand("AT ST 0C"));
         //await _sendCommand(Command("AT CF 000"));
         //await sendCommand("AT CM 048");
         model.log("Initialized!");
