@@ -108,7 +108,7 @@ class ElmMonitorTask extends ElmTask {
 }
 
 class ElmPollTask extends ElmTask {
-  final CanTopic topic;
+  final CanTopic responseTopic;
   final int header;
   final int flowDelay;
   final List<String> requests;
@@ -119,7 +119,7 @@ class ElmPollTask extends ElmTask {
     required super.timeout,
     required super.isEnabled,
     super.cooldown,
-    required this.topic,
+    required this.responseTopic,
     required this.header,
     this.flowDelay = 0,
     required this.requests

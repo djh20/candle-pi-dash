@@ -184,7 +184,7 @@ class Vehicle {
         isEnabled: () => metrics['gear']?.value == 0,
         header: 0x792,
         requests: ["03221210", "03221230"],
-        topic: _topics[0x793]!
+        responseTopic: _topics[0x793]!
       )
     ]);
     
