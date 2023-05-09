@@ -85,7 +85,7 @@ class ElmMonitorTask extends ElmTask {
 
     _pendingTopics.addAll(topics);
     
-    await vehicle.sendCommand(ElmCommand("AT MA"));
+    vehicle.sendCommand(ElmCommand("AT MA", timeout: const Duration(milliseconds: 50)));
     return super.run();
   }
 
@@ -95,7 +95,7 @@ class ElmMonitorTask extends ElmTask {
     status = ElmTaskStatus.completing;
 
     _pendingTopics.clear();
-    await vehicle.sendCommand(ElmCommand('STOP', validResponses: ['STOPPED', '?']));
+    await vehicle.sendCommand(ElmCommand('STOP'));
     await super.complete();
   }
   
@@ -138,7 +138,6 @@ class ElmPollTask extends ElmTask {
       await vehicle.sendCommand(
         ElmCommand(
           request,
-          validResponses: [],
           timeout: const Duration(milliseconds: 200)
         )
       );
@@ -162,14 +161,11 @@ class ElmPollTask extends ElmTask {
 class ElmCommand {
   late final String text;
   final Duration timeout;
-  late final List<String> validResponses;
-  final completer = Completer<String?>();
+  final completer = Completer<void>();
 
   ElmCommand(String text, {
-    this.timeout = const Duration(milliseconds: 200),
-    List<String>? validResponses
+    this.timeout = const Duration(milliseconds: 200)
   }) {
     this.text = text.replaceAll(' ', '').toUpperCase();
-    this.validResponses = validResponses ?? [this.text];
   }
 }

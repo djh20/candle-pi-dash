@@ -176,6 +176,7 @@ class Vehicle {
           _topics[0x60D]!, // Doors
         ] 
       ),
+      /*
       ElmPollTask(
         name: "Charger",
         vehicle: this,
@@ -186,6 +187,7 @@ class Vehicle {
         requests: ["03221210", "03221230"],
         responseTopic: _topics[0x793]!
       )
+      */
     ]);
     
     registerMetrics([
@@ -397,36 +399,33 @@ class Vehicle {
 
   void processIncomingData(Uint8List data) {
     for (var charCode in data) {
-      if (charCode == 13) {
+      String char = String.fromCharCode(charCode);
+      
+      if (char == ">") {
+        final bool waitingForPrompt = _latestCommand?.completer.isCompleted == false;
+        if (waitingForPrompt) {
+          _commandTimer?.cancel();
+          _completeCommand(_latestCommand!);
+        }
+
+      } else if (char == "\r") {
         if (_buffer.isNotEmpty) {
-          String msg = _buffer.replaceAll('>', '');
-          model.log("RX: $msg");
+          model.log("RX: $_buffer");
 
-          if (msg == "BUFFER FULL") {
+          if (_buffer == "FULL") {
             if (_currentTask?.status == ElmTaskStatus.running) {
-              sendCommand(ElmCommand("AT MA"));
+              sendCommand(ElmCommand("AT MA", timeout: const Duration(milliseconds: 50)));
             }
-            
+
           } else {
-            if (recording) {
-              int ms = millis() - _recordingStartMs!;
-              _recordedData += '$ms\t$msg\n';
-            }
-
-            processFrame(msg);
+            processFrame(_buffer);
           }
-
-          final bool waitingForResponse = _latestCommand?.completer.isCompleted == false;
-          if (waitingForResponse && _latestCommand!.validResponses.contains(msg)) {
-            _commandTimer?.cancel();
-            _completeCommand(_latestCommand!, msg);
-          }
-
+          
           _buffer = "";
         }
 
-      } else if (charCode != 10 && charCode != 62) { // Ignore '\n' and '>'
-        _buffer += String.fromCharCode(charCode);
+      } else {
+        _buffer += char;
       }
     }
   }
@@ -566,7 +565,7 @@ class Vehicle {
     }
   }
 
-  Future<String?> sendCommand(ElmCommand command) {
+  Future<void> sendCommand(ElmCommand command) {
     _commandQueue.add(command);
     if (_commandQueue.length == 1) _processCommandQueue();
 
@@ -583,11 +582,11 @@ class Vehicle {
     model.log('TX: ${command.text}');
     _btConnection?.output.add(ascii.encode('${command.text}\r'));
 
-    _commandTimer = Timer(command.timeout, () => _completeCommand(command, null));
+    _commandTimer = Timer(command.timeout, () => _completeCommand(command));
   }
 
-  void _completeCommand(ElmCommand command, String? response) {
-    command.completer.complete(response);
+  void _completeCommand(ElmCommand command) {
+    command.completer.complete();
     _processCommandQueue();
   }
 
@@ -648,13 +647,13 @@ class Vehicle {
       Future.delayed(const Duration(milliseconds: 50), () async {
         model.log('Initializing...');
         await sendCommand(ElmCommand("AT Z"));
-        await Future.delayed(const Duration(seconds: 2));
-        //await sendCommand("AT E0");
+        await Future.delayed(const Duration(seconds: 4));
+        await sendCommand(ElmCommand("AT E0"));
+        await sendCommand(ElmCommand("AT S0"));
+        await sendCommand(ElmCommand("AT L0"));
+        await sendCommand(ElmCommand("AT H1"));
         await sendCommand(ElmCommand("AT SP6"));
         await sendCommand(ElmCommand("AT CAF0"));
-        await sendCommand(ElmCommand("AT S0"));
-        await sendCommand(ElmCommand("AT L1"));
-        await sendCommand(ElmCommand("AT H1"));
         await sendCommand(ElmCommand("AT ST 0C"));
         //await _sendCommand(Command("AT CF 000"));
         //await sendCommand("AT CM 048");
@@ -760,7 +759,6 @@ class Vehicle {
   /// When the location services are not enabled or permissions
   /// are denied the `Future` will return an error.
   Future<void> _initGps() async {
-    model.log('Initializing GPS...', category: 3);
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -792,8 +790,6 @@ class Vehicle {
         'Location permissions are permanently denied, we cannot request permissions.');
     }
 
-    model.log('Listening to position stream...', category: 3);
-
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 1
@@ -801,12 +797,6 @@ class Vehicle {
 
     _positionSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
     (Position? position) {
-      /*
-      model.log(
-        position == null ? 'Unknown' : '${position.latitude.toString()}, ${position.longitude.toString()}',
-        category: 3
-      );
-      */
       debugPrint(position.toString());
       metrics['gps_lock']?.setValue(position != null);
       if (position == null) return;
