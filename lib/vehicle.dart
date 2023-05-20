@@ -140,7 +140,7 @@ class Vehicle {
       ElmMonitorTask(
         name: "Driving #2",
         vehicle: this,
-        timeout: const Duration(milliseconds: 100),
+        timeout: const Duration(milliseconds: 200),
         isEnabled: () => metrics['gear']?.value > 0,
         //cooldown: const Duration(milliseconds: 100),
         topics: [
@@ -152,7 +152,7 @@ class Vehicle {
       ElmMonitorTask(
         name: "Driving #3",
         vehicle: this,
-        timeout: const Duration(milliseconds: 100),
+        timeout: const Duration(milliseconds: 200),
         isEnabled: () => metrics['gear']?.value > 0,
         //cooldown: const Duration(milliseconds: 100),
         topics: [
@@ -514,7 +514,7 @@ class Vehicle {
       metrics['fr_speed']?.setValue(frontRightSpeed);
 
     } else if (topic.id == 0x5B3) {
-      final int gids = data[5];
+      final int gids = (data[4] << 8) | data[5];
 
       // Gids shows as high value on startup - this is incorrect, so we ignore it.
       if (gids < 1000) metrics['gids']?.setValue(gids);
