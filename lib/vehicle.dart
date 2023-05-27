@@ -348,7 +348,7 @@ class Vehicle {
       metrics['range']?.setValue(range);
 
       final double batteryCapacity = ((soh/100.0)*Constants.fullBatteryCapacity);
-      final double soc = (energyKwh/batteryCapacity)*100;
+      final double soc = min((energyKwh/batteryCapacity)*100, 100);
       metrics['soc']?.setValue(soc);
 
     } else if (metric.id == 'range') {
