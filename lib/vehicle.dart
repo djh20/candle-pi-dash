@@ -514,7 +514,7 @@ class Vehicle {
       metrics['fr_speed']?.setValue(frontRightSpeed);
 
     } else if (topic.id == 0x5B3) {
-      final int gids = (data[4] << 8) | data[5];
+      final int gids = ((data[4] & 0x01) << 8) | data[5];
 
       // Gids shows as high value on startup - this is incorrect, so we ignore it.
       if (gids < 1000) metrics['gids']?.setValue(gids);
