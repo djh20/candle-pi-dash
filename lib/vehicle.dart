@@ -45,9 +45,9 @@ class Vehicle {
 
   String _buffer = "";
 
-  final _commandQueue = Queue<ElmCommand>();
-  ElmCommand? _latestCommand;
-  Timer? _commandTimer;
+  final List<ElmCommand> _pendingCommands = [];
+  //ElmCommand? _latestCommand;
+  //Timer? _commandTimer;
   
   ElmTask? _currentTask;
   int? _currentTaskIndex;
@@ -63,69 +63,311 @@ class Vehicle {
 
     registerTopics([
       CanTopic(
+        id: 0x002,
+        name: "Steering",
+        bytes: 5,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x02A,
+        name: "Unknown",
+        bytes: 3,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x130,
+        name: "Unknown",
+        bytes: 3,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x174,
+        name: "VCM",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
         id: 0x176,
         name: "Motor Voltage",
         bytes: 7,
-        //isEnabled: () => metrics['gear']?.value > 0
+        interval: const Duration(milliseconds: 10)
       ),
       CanTopic(
         id: 0x180,
         name: "Motor Current & Throttle",
         bytes: 8,
-        //isEnabled: () => metrics['gear']?.value > 0
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x1CA,
+        name: "Brake Pressure",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x1CB,
+        name: "Target Regen Braking",
+        bytes: 7,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x1D5,
+        name: "Applied Regen Braking",
+        bytes: 5,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x1F9,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x215,
+        name: "Unknown",
+        bytes: 6,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x216,
+        name: "Unknown",
+        bytes: 2,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x245,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x260,
+        name: "Cluster Power Values",
+        bytes: 4,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x280,
+        name: "Cluster Speed",
+        bytes: 8,
+        interval: const Duration(milliseconds: 20)
       ),
       CanTopic(
         id: 0x284,
-        name: "Speed",
+        name: "Front Wheel Speeds",
         bytes: 8,
-        //isEnabled: () => metrics['gear']?.value > 0
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x285,
+        name: "Rear Wheel Speeds",
+        bytes: 8,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x292,
+        name: "12V Battery",
+        bytes: 8,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x2DE,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 10)
+      ),
+      CanTopic(
+        id: 0x300,
+        name: "Steering Force",
+        bytes: 1,
+        interval: const Duration(milliseconds: 20)
+      ),
+      CanTopic(
+        id: 0x351,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x354,
+        name: "Vehicle Speed (ABS)",
+        bytes: 8,
+        interval: const Duration(milliseconds: 40)
+      ),
+      CanTopic(
+        id: 0x355,
+        name: "Cluster Speed & Units",
+        bytes: 7,
+        interval: const Duration(milliseconds: 40)
       ),
       CanTopic(
         id: 0x358,
         name: "Indicators & Headlights",
         bytes: 8,
-        //isEnabled: () => metrics['gear']?.value > 0
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x35D,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x385,
+        name: "Tire Pressure",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
       ),
       CanTopic(
         id: 0x421,
-        name: "Shifter",
-        bytes: 3,
-        //isEnabled: () => true
+        name: "Dash Shifter Position",
+        bytes: 1,
+        interval: const Duration(milliseconds: 60)
+      ),
+      CanTopic(
+        id: 0x50A,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x50D,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x510,
+        name: "Climate Control #1",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x54A,
+        name: "Climate Control #2",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
       ),
       CanTopic(
         id: 0x54B,
-        name: "Climate Control",
+        name: "Climate Control #3",
         bytes: 8,
-        //isEnabled: () => true
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x551,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x5A9,
+        name: "Cluster Range",
+        bytes: 8,
+        interval: const Duration(milliseconds: 500)
       ),
       CanTopic(
         id: 0x5B3,
         name: "HV Battery",
         bytes: 8,
-        //isEnabled: () => true,
+        interval: const Duration(milliseconds: 500)
+      ),
+      CanTopic(
+        id: 0x5C0,
+        name: "Battery Stats",
+        bytes: 8,
+        interval: const Duration(milliseconds: 500)
       ),
       CanTopic(
         id: 0x5C5,
         name: "Parking Brake & Odometer",
         bytes: 8,
-        /*isEnabled: () =>
-          metrics['parking_brake_engaged']?.value == true || 
-          metrics['speed']?.value == 0*/
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x5E3,
+        name: "Unknown",
+        bytes: 4,
+        interval: const Duration(milliseconds: 500)
+      ),
+      CanTopic(
+        id: 0x5E4,
+        name: "Unknown",
+        bytes: 3,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x5EB,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 500)
+      ),
+      CanTopic(
+        id: 0x5EB,
+        name: "Unknown",
+        bytes: 8,
+        interval: const Duration(milliseconds: 500)
       ),
       CanTopic(
         id: 0x60D,
         name: "Doors & Vehicle State",
         bytes: 8,
-        //isEnabled: () => metrics['speed']?.value == 0,
+        interval: const Duration(milliseconds: 100)
       ),
+      CanTopic(
+        id: 0x625,
+        name: "Headlights Mode",
+        bytes: 6,
+        interval: const Duration(milliseconds: 100)
+      ),
+      CanTopic(
+        id: 0x6F6,
+        name: "Unknown",
+        bytes: 3,
+        interval: const Duration(milliseconds: 100)
+      ),
+      /*
       CanTopic(
         id: 0x793,
         name: "Charger",
         bytes: 8
       )
+      */
     ]);
 
     registerTasks([
+      ElmMonitorTask(
+        name: "Driving",
+        vehicle: this,
+        isEnabled: () => metrics['gear']?.value > 0,
+        topics: _topics.values.toList(),
+        desiredTopics: [
+          _topics[0x284]!, // Speed
+          _topics[0x421]!, // Shifter
+          _topics[0x5B3]!, // HV Battery
+          _topics[0x54B]!, // Climate Control
+          _topics[0x5C5]!, // Park Brake & Odometer
+          _topics[0x358]!, // Indicators & Headlights
+          _topics[0x176]!, // Motor Voltage
+          _topics[0x180]!, // Motor Current
+        ]
+      ),
+      ElmMonitorTask(
+        name: "Parked",
+        vehicle: this,
+        //timeout: const Duration(milliseconds: 500),
+        isEnabled: () => metrics['gear']?.value == 0,
+        //cooldown: const Duration(milliseconds: 100),
+        topics: _topics.values.toList(),
+        desiredTopics: [
+          _topics[0x421]!, // Shifter
+          _topics[0x5B3]!, // HV Battery
+          _topics[0x54B]!, // Climate Control
+          _topics[0x5C5]!, // Park Brake & Odometer
+          _topics[0x60D]!, // Doors
+        ] 
+      ),
+      /*
       ElmMonitorTask(
         name: "Driving #1",
         vehicle: this,
@@ -176,6 +418,8 @@ class Vehicle {
           _topics[0x60D]!, // Doors
         ] 
       ),
+      */
+      
       /*
       ElmPollTask(
         name: "Charger",
@@ -402,16 +646,15 @@ class Vehicle {
       String char = String.fromCharCode(charCode);
       
       if (char == ">") {
-        final bool waitingForPrompt = _latestCommand?.completer.isCompleted == false;
-        if (waitingForPrompt) {
-          _commandTimer?.cancel();
-          _completeCommand(_latestCommand!);
+        for (var command in _pendingCommands) {
+          _completeCommand(command, true);
         }
 
       } else if (char == "\r") {
         if (_buffer.isNotEmpty) {
           model.log("RX: $_buffer");
-
+          
+          /*
           if (_buffer == "FULL") {
             if (_currentTask?.status == ElmTaskStatus.running) {
               sendCommand(ElmCommand("AT MA", timeout: const Duration(milliseconds: 50)));
@@ -420,6 +663,9 @@ class Vehicle {
           } else {
             processFrame(_buffer);
           }
+          */
+
+          processFrame(_buffer);
           
           _buffer = "";
         }
@@ -565,29 +811,20 @@ class Vehicle {
     }
   }
 
-  Future<void> sendCommand(ElmCommand command) {
-    _commandQueue.add(command);
-    if (_commandQueue.length == 1) _processCommandQueue();
+  Future<bool> sendCommand(ElmCommand command) {
+    model.log('TX: ${command.text}');
+    _btConnection?.output.add(ascii.encode('${command.text}\r'));
+    _pendingCommands.add(command);
 
+    command.timer = Timer(command.timeout, () => _completeCommand(command, false));
     return command.completer.future;
   }
 
-  void _processCommandQueue() {
-    if (!connected || _commandQueue.isEmpty) return;
-    if (_latestCommand?.completer.isCompleted == false) return;
-
-    final command = _commandQueue.removeFirst();
-    _latestCommand = command;
-    
-    model.log('TX: ${command.text}');
-    _btConnection?.output.add(ascii.encode('${command.text}\r'));
-
-    _commandTimer = Timer(command.timeout, () => _completeCommand(command));
-  }
-
-  void _completeCommand(ElmCommand command) {
-    command.completer.complete();
-    _processCommandQueue();
+  void _completeCommand(ElmCommand command, bool gotPrompt) {
+    if (command.completer.isCompleted) return;
+    command.timer?.cancel();
+    command.completer.complete(gotPrompt);
+    _pendingCommands.remove(command);
   }
 
   Future<bool> nextTask() async {
@@ -674,7 +911,6 @@ class Vehicle {
 
     //_currentTask = null;
     //_commandTimer?.cancel();
-    await _currentTask?.complete();
 
     //sendCommand(ElmCommand("STOP", validResponses: ['STOPPED', '?']));
     await sendCommand(ElmCommand("AT Z"));

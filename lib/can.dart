@@ -5,6 +5,7 @@ class CanTopic {
   final int id;
   final String name;
   final int bytes;
+  final Duration interval;
   //final bool Function() isEnabled;
   final void Function(List<int> data, int frameIndex)? processFrame;
 
@@ -14,6 +15,7 @@ class CanTopic {
     required this.id,
     required this.name,
     required this.bytes,
+    required this.interval,
     //required this.isEnabled,
     this.processFrame
   }) {

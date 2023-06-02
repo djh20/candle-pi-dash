@@ -5,108 +5,96 @@ import 'package:candle_dash/can.dart';
 import 'package:candle_dash/utils.dart';
 import 'package:candle_dash/vehicle.dart';
 
-enum ElmTaskStatus {
-  running,
-  completing,
-  completed
-}
-
 abstract class ElmTask {
   final String name;
   final Vehicle vehicle;
-  final Duration timeout;
   final bool Function() isEnabled;
-  final Duration? cooldown;
-  
-  var status = ElmTaskStatus.completed;
-
-  Timer? _timeoutTimer;
-  Completer<void>? _completer;
 
   ElmTask({
     required this.name,
     required this.vehicle,
-    required this.timeout,
-    required this.isEnabled,
-    this.cooldown,
+    required this.isEnabled
   });
 
-  Future<void> run() async {
-    _completer = Completer<void>();
-    _timeoutTimer = Timer(timeout, complete);
-    return _completer!.future;
-  }
-
+  Future<void> run();
   void processTopicData(CanTopic topic, List<int> data);
-  
-  Future<void> complete() async {
-    _timeoutTimer?.cancel();
-    _completer?.complete();
-    status = ElmTaskStatus.completed;
-  }
 }
 
 class ElmMonitorTask extends ElmTask {
-  List<CanTopic> topics;
+  final List<CanTopic> topics;
+  final List<CanTopic> desiredTopics;
 
-  final List<CanTopic> _pendingTopics = [];
+  final List<CanTopic> _remainingTopics = [];
 
   ElmMonitorTask({
     required super.name,
     required super.vehicle,
-    required super.timeout,
     required super.isEnabled,
-    super.cooldown,
-    required this.topics
+    required this.topics,
+    required this.desiredTopics
   });
 
   @override
   Future<void> run() async {
-    status = ElmTaskStatus.running;
-    //List<CanTopic> enabledTopics = topics.where((topic) => topic.isEnabled()).toList();
-    List<int> ids = topics.map((topic) => topic.id).toList();
+    _remainingTopics.addAll(desiredTopics);
 
-    int filter = ids[0];
-    for (int i = 1; i < ids.length; i++) {
-      filter = filter & ids[i];
-    }
+    // Sort from lowest id to highest id.
+    _remainingTopics.sort((a, b) => a.id - b.id);
     
-    int mask = ~ids[0];
-    for (int i = 1; i < ids.length; i++) {
-      mask = mask & ~ids[i];
+    while (_remainingTopics.isNotEmpty) {
+      final List<CanTopic> selectedTopics = []; 
+      int filter = _remainingTopics[0].id;
+      int inverseFilter = ~filter;
+
+      for (int i = 1; i < _remainingTopics.length; i++) {
+        final topic = _remainingTopics[i];
+
+        final int newFilter = filter & topic.id;
+        final int newInverseFilter = inverseFilter & ~topic.id;
+        final int mask = (newFilter | newInverseFilter) & 0x7FF;
+
+        final matchingTopics = topics.where((topic) => (topic.id & mask) == newFilter);
+        final bytesPerSec = matchingTopics.fold<double>(
+          0, 
+          (val, topic) => (val + (1/topic.interval.inSeconds) * topic.bytes)
+        );
+
+        if (bytesPerSec <= 1600) {
+          filter = newFilter;
+          inverseFilter = newInverseFilter;
+          selectedTopics.add(topic);
+        }
+      }
+      
+      for (var topic in selectedTopics) {
+        _remainingTopics.remove(topic);
+      }
+
+      final int mask = (filter | inverseFilter) & 0x7FF;
+      final String filterHex = intToHex(filter, 3);
+      final String maskHex = intToHex(mask, 3);
+
+      vehicle.model.log(selectedTopics.toString(), category: 3);
+      await vehicle.sendCommand(ElmCommand('AT CM $maskHex'));
+      await vehicle.sendCommand(ElmCommand('AT CF $filterHex'));
+
+      final gotPrompt = await vehicle.sendCommand(
+        ElmCommand("AT MA", timeout: const Duration(milliseconds: 200))
+      );
+
+      if (!gotPrompt) {
+        await vehicle.sendCommand(ElmCommand('STOP'));
+      }
     }
-    mask = (mask | filter) & 0x7FF;
-
-    String filterHex = intToHex(filter, 3);
-    String maskHex = intToHex(mask, 3);
-
-    await vehicle.sendCommand(ElmCommand('AT CM $maskHex'));
-    await vehicle.sendCommand(ElmCommand('AT CF $filterHex'));
-
-    _pendingTopics.addAll(topics);
-    
-    vehicle.sendCommand(ElmCommand("AT MA", timeout: const Duration(milliseconds: 50)));
-    return super.run();
-  }
-
-  @override
-  Future<void> complete() async {
-    if (status != ElmTaskStatus.running) return;
-    status = ElmTaskStatus.completing;
-
-    _pendingTopics.clear();
-    await vehicle.sendCommand(ElmCommand('STOP'));
-    await super.complete();
   }
   
   @override
   void processTopicData(CanTopic topic, List<int> data) {
-    if (_pendingTopics.remove(topic) && _pendingTopics.isEmpty) {
-      complete();
-    }
+    _remainingTopics.remove(topic);
   }
 }
 
+/*
 class ElmPollTask extends ElmTask {
   final CanTopic responseTopic;
   final int header;
@@ -116,7 +104,7 @@ class ElmPollTask extends ElmTask {
   ElmPollTask({
     required super.name,
     required super.vehicle,
-    required super.timeout,
+    //required super.timeout,
     required super.isEnabled,
     super.cooldown,
     required this.responseTopic,
@@ -157,11 +145,13 @@ class ElmPollTask extends ElmTask {
     // TODO: implement processTopicData
   }
 }
+*/
 
 class ElmCommand {
   late final String text;
   final Duration timeout;
-  final completer = Completer<void>();
+  final completer = Completer<bool>();
+  Timer? timer;
 
   ElmCommand(String text, {
     this.timeout = const Duration(milliseconds: 200)
