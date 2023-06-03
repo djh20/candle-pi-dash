@@ -221,7 +221,7 @@ class Vehicle {
       CanTopic(
         id: 0x421,
         name: "Dash Shifter Position",
-        bytes: 1,
+        bytes: 3,
         interval: const Duration(milliseconds: 60)
       ),
       CanTopic(
@@ -345,7 +345,7 @@ class Vehicle {
           _topics[0x284]!, // Speed
           _topics[0x421]!, // Shifter
           _topics[0x5B3]!, // HV Battery
-          _topics[0x54B]!, // Climate Control
+          //_topics[0x54B]!, // Climate Control
           _topics[0x5C5]!, // Park Brake & Odometer
           _topics[0x358]!, // Indicators & Headlights
           _topics[0x176]!, // Motor Voltage
@@ -362,7 +362,7 @@ class Vehicle {
         desiredTopics: [
           _topics[0x421]!, // Shifter
           _topics[0x5B3]!, // HV Battery
-          _topics[0x54B]!, // Climate Control
+          //_topics[0x54B]!, // Climate Control
           _topics[0x5C5]!, // Park Brake & Odometer
           _topics[0x60D]!, // Doors
         ] 
@@ -839,8 +839,10 @@ class Vehicle {
     final task = _tasks[_currentTaskIndex!];
     if (task.isEnabled()) {
       model.log(task.name, category: 2);
+      
       _currentTask = task;
       await task.run();
+      _currentTask = null;
     }
 
     return true;

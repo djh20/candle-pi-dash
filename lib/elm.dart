@@ -43,8 +43,11 @@ class ElmMonitorTask extends ElmTask {
     
     while (_remainingTopics.isNotEmpty) {
       final List<CanTopic> selectedTopics = []; 
-      int filter = _remainingTopics[0].id;
+
+      int filter = _remainingTopics.first.id;
       int inverseFilter = ~filter;
+
+      selectedTopics.add(_remainingTopics.first);
 
       for (int i = 1; i < _remainingTopics.length; i++) {
         final topic = _remainingTopics[i];
@@ -53,13 +56,23 @@ class ElmMonitorTask extends ElmTask {
         final int newInverseFilter = inverseFilter & ~topic.id;
         final int mask = (newFilter | newInverseFilter) & 0x7FF;
 
+        /*
+        vehicle.model.log(
+          '${topic.idHex}: ${intToHex(newFilter, 3)} | ${intToHex(mask, 3)}', 
+          category: 3
+        );
+        */
+
         final matchingTopics = topics.where((topic) => (topic.id & mask) == newFilter);
+        //vehicle.model.log('${matchingTopics.length} matching topic(s)', category: 3);
+
         final bytesPerSec = matchingTopics.fold<double>(
           0, 
-          (val, topic) => (val + (1/topic.interval.inSeconds) * topic.bytes)
+          (val, topic) => (val + (1000/topic.interval.inMilliseconds) * topic.bytes)
         );
+        //vehicle.model.log('$bytesPerSec byte(s) per sec', category: 3);
 
-        if (bytesPerSec <= 1600) {
+        if (bytesPerSec <= 1800) {
           filter = newFilter;
           inverseFilter = newInverseFilter;
           selectedTopics.add(topic);
@@ -74,12 +87,12 @@ class ElmMonitorTask extends ElmTask {
       final String filterHex = intToHex(filter, 3);
       final String maskHex = intToHex(mask, 3);
 
-      vehicle.model.log(selectedTopics.toString(), category: 3);
+      vehicle.model.log(selectedTopics.map((t) => t.idHex).toString(), category: 3);
       await vehicle.sendCommand(ElmCommand('AT CM $maskHex'));
       await vehicle.sendCommand(ElmCommand('AT CF $filterHex'));
 
       final gotPrompt = await vehicle.sendCommand(
-        ElmCommand("AT MA", timeout: const Duration(milliseconds: 200))
+        ElmCommand("AT MA", timeout: const Duration(milliseconds: 150))
       );
 
       if (!gotPrompt) {
