@@ -8,103 +8,73 @@ import 'package:candle_dash/vehicle.dart';
 abstract class ElmTask {
   final String name;
   final Vehicle vehicle;
+  final int? priority;
+  final Duration maxDuration;
+  final Duration? interval;
   final bool Function() isEnabled;
 
   ElmTask({
     required this.name,
     required this.vehicle,
-    required this.isEnabled
+    this.priority,
+    required this.maxDuration,
+    this.interval,
+    required this.isEnabled,
   });
 
   Future<void> run();
-  void processTopicData(CanTopic topic, List<int> data);
+  //void processTopicData(CanTopic topic, List<int> data);
 }
 
 class ElmMonitorTask extends ElmTask {
   final List<CanTopic> topics;
-  final List<CanTopic> desiredTopics;
-
-  final List<CanTopic> _remainingTopics = [];
 
   ElmMonitorTask({
     required super.name,
     required super.vehicle,
+    super.priority,
+    required super.maxDuration,
+    super.interval,
     required super.isEnabled,
-    required this.topics,
-    required this.desiredTopics
+    required this.topics
   });
 
   @override
   Future<void> run() async {
-    _remainingTopics.addAll(desiredTopics);
+    List<int> ids = topics.map((topic) => topic.id).toList();
 
-    // Sort from lowest id to highest id.
-    _remainingTopics.sort((a, b) => a.id - b.id);
+    int filter = ids[0];
+    for (int i = 1; i < ids.length; i++) {
+      filter = filter & ids[i];
+    }
     
-    while (_remainingTopics.isNotEmpty) {
-      final List<CanTopic> selectedTopics = []; 
+    int mask = ~ids[0];
+    for (int i = 1; i < ids.length; i++) {
+      mask = mask & ~ids[i];
+    }
+    mask = (mask | filter) & 0x7FF;
 
-      int filter = _remainingTopics.first.id;
-      int inverseFilter = ~filter;
+    String filterHex = intToHex(filter, 3);
+    String maskHex = intToHex(mask, 3);
 
-      selectedTopics.add(_remainingTopics.first);
+    await vehicle.sendCommand(ElmCommand('AT CM $maskHex'));
+    await vehicle.sendCommand(ElmCommand('AT CF $filterHex'));
 
-      for (int i = 1; i < _remainingTopics.length; i++) {
-        final topic = _remainingTopics[i];
+    final gotPrompt = await vehicle.sendCommand(
+      ElmCommand("AT MA", timeout: maxDuration)
+    );
 
-        final int newFilter = filter & topic.id;
-        final int newInverseFilter = inverseFilter & ~topic.id;
-        final int mask = (newFilter | newInverseFilter) & 0x7FF;
-
-        /*
-        vehicle.model.log(
-          '${topic.idHex}: ${intToHex(newFilter, 3)} | ${intToHex(mask, 3)}', 
-          category: 3
-        );
-        */
-
-        final matchingTopics = topics.where((topic) => (topic.id & mask) == newFilter);
-        //vehicle.model.log('${matchingTopics.length} matching topic(s)', category: 3);
-
-        final bytesPerSec = matchingTopics.fold<double>(
-          0, 
-          (val, topic) => (val + (1000/topic.interval.inMilliseconds) * topic.bytes)
-        );
-        //vehicle.model.log('$bytesPerSec byte(s) per sec', category: 3);
-
-        if (bytesPerSec <= 1800) {
-          filter = newFilter;
-          inverseFilter = newInverseFilter;
-          selectedTopics.add(topic);
-        }
-      }
-      
-      for (var topic in selectedTopics) {
-        _remainingTopics.remove(topic);
-      }
-
-      final int mask = (filter | inverseFilter) & 0x7FF;
-      final String filterHex = intToHex(filter, 3);
-      final String maskHex = intToHex(mask, 3);
-
-      vehicle.model.log(selectedTopics.map((t) => t.idHex).toString(), category: 3);
-      await vehicle.sendCommand(ElmCommand('AT CM $maskHex'));
-      await vehicle.sendCommand(ElmCommand('AT CF $filterHex'));
-
-      final gotPrompt = await vehicle.sendCommand(
-        ElmCommand("AT MA", timeout: const Duration(milliseconds: 150))
-      );
-
-      if (!gotPrompt) {
-        await vehicle.sendCommand(ElmCommand('STOP'));
-      }
+    if (!gotPrompt) {
+      await vehicle.sendCommand(ElmCommand('STOP'));
     }
   }
   
+  /*
   @override
   void processTopicData(CanTopic topic, List<int> data) {
-    _remainingTopics.remove(topic);
+    //_remainingTopics.remove(topic);
   }
+  */
 }
 
 /*

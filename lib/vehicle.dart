@@ -49,8 +49,8 @@ class Vehicle {
   //ElmCommand? _latestCommand;
   //Timer? _commandTimer;
   
-  ElmTask? _currentTask;
-  int? _currentTaskIndex;
+  //ElmTask? _currentTask;
+  final List<ElmTask> _taskQueue = [];
 
   bool recording = false;
   int? _recordingStartMs;
@@ -337,89 +337,50 @@ class Vehicle {
 
     registerTasks([
       ElmMonitorTask(
-        name: "Driving",
+        name: "Driving: Speed & Motor Power",
         vehicle: this,
+        priority: 2,
+        maxDuration: const Duration(milliseconds: 500),
         isEnabled: () => metrics['gear']?.value > 0,
-        topics: _topics.values.toList(),
-        desiredTopics: [
+        topics: [
           _topics[0x284]!, // Speed
-          _topics[0x421]!, // Shifter
-          _topics[0x5B3]!, // HV Battery
-          //_topics[0x54B]!, // Climate Control
-          _topics[0x5C5]!, // Park Brake & Odometer
-          _topics[0x358]!, // Indicators & Headlights
           _topics[0x176]!, // Motor Voltage
           _topics[0x180]!, // Motor Current
         ]
       ),
       ElmMonitorTask(
-        name: "Parked",
+        name: "Driving: Shifter & Parking Brake",
         vehicle: this,
-        //timeout: const Duration(milliseconds: 500),
-        isEnabled: () => metrics['gear']?.value == 0,
-        //cooldown: const Duration(milliseconds: 100),
-        topics: _topics.values.toList(),
-        desiredTopics: [
+        maxDuration: const Duration(milliseconds: 100),
+        interval: const Duration(milliseconds: 500),
+        isEnabled: () => metrics['gear']?.value > 0 && metrics['speed']?.value < 15,
+        topics: [
           _topics[0x421]!, // Shifter
-          _topics[0x5B3]!, // HV Battery
-          //_topics[0x54B]!, // Climate Control
-          _topics[0x5C5]!, // Park Brake & Odometer
-          _topics[0x60D]!, // Doors
-        ] 
+          _topics[0x5C5]!, // Parking Brake
+        ]
       ),
-      /*
       ElmMonitorTask(
-        name: "Driving #1",
+        name: "Driving: HV Battery",
         vehicle: this,
-        timeout: const Duration(milliseconds: 200),
+        maxDuration: const Duration(milliseconds: 250),
+        interval: const Duration(seconds: 10),
         isEnabled: () => metrics['gear']?.value > 0,
         topics: [
-          _topics[0x284]!, // Speed
-          _topics[0x421]!, // Shifter
           _topics[0x5B3]!, // HV Battery
         ]
       ),
       ElmMonitorTask(
-        name: "Driving #2",
-        vehicle: this,
-        timeout: const Duration(milliseconds: 200),
-        isEnabled: () => metrics['gear']?.value > 0,
-        //cooldown: const Duration(milliseconds: 100),
-        topics: [
-          _topics[0x284]!, // Speed
-          _topics[0x54B]!, // Climate Control
-          _topics[0x5C5]!, // Park Brake & Odometer
-        ]
-      ),
-      ElmMonitorTask(
-        name: "Driving #3",
-        vehicle: this,
-        timeout: const Duration(milliseconds: 200),
-        isEnabled: () => metrics['gear']?.value > 0,
-        //cooldown: const Duration(milliseconds: 100),
-        topics: [
-          _topics[0x284]!, // Speed
-          _topics[0x358]!, // Indicators & Headlights
-          _topics[0x176]!, // Motor Voltage
-          _topics[0x180]!, // Motor Current
-        ] 
-      ),
-      ElmMonitorTask(
         name: "Parked",
         vehicle: this,
-        timeout: const Duration(milliseconds: 500),
+        maxDuration: const Duration(milliseconds: 500),
         isEnabled: () => metrics['gear']?.value == 0,
-        //cooldown: const Duration(milliseconds: 100),
         topics: [
           _topics[0x421]!, // Shifter
           _topics[0x5B3]!, // HV Battery
-          _topics[0x54B]!, // Climate Control
           _topics[0x5C5]!, // Park Brake & Odometer
           _topics[0x60D]!, // Doors
         ] 
       ),
-      */
-      
       /*
       ElmPollTask(
         name: "Charger",
@@ -456,6 +417,7 @@ class Vehicle {
       Metric(id: "fan_speed", timeout: const Duration(seconds: 5)),
       Metric(id: "driver_door_open", defaultValue: false),
       Metric(id: "passenger_door_open", defaultValue: false),
+      /*
       Metric(
         id: "indicating_left", 
         defaultValue: false, 
@@ -466,6 +428,7 @@ class Vehicle {
         defaultValue: false, 
         timeout: const Duration(seconds: 5)
       ),
+      */
       Metric(id: "locked", defaultValue: false),
       Metric(id: "parking_brake_engaged", defaultValue: false),
       Metric(id: "odometer"),
@@ -505,6 +468,7 @@ class Vehicle {
 
   void registerTask(ElmTask task) {
     _tasks.add(task);
+    _taskQueue.add(task);
     model.log('Registered task: ${task.name}');
   }
 
@@ -692,7 +656,7 @@ class Vehicle {
           matches.map((m) => int.tryParse(m.group(0) ?? '', radix: 16) ?? 0).toList();
         
         processTopicData(frameTopic, frameData);
-        _currentTask?.processTopicData(frameTopic, frameData);
+        //_currentTask?.processTopicData(frameTopic, frameData);
 
         /*
         if (_currentTask != null && _pendingTopics.remove(frameTopic)) {
@@ -763,7 +727,7 @@ class Vehicle {
       final int gids = ((data[4] & 0x01) << 8) | data[5];
 
       // Gids shows as high value on startup - this is incorrect, so we ignore it.
-      if (gids < 1000) metrics['gids']?.setValue(gids);
+      if (gids < 500) metrics['gids']?.setValue(gids);
       
       metrics['soh']?.setValue(data[1] >> 1);
 
@@ -830,22 +794,32 @@ class Vehicle {
   Future<bool> nextTask() async {
     if (!connected) return false;
 
-    if (_currentTaskIndex == null || _currentTaskIndex! >= _tasks.length - 1) {
-      _currentTaskIndex = 0;
-    } else {
-      _currentTaskIndex = _currentTaskIndex! + 1;
-    }
+    if (_taskQueue.isNotEmpty) {
+      final task = _taskQueue.first;
+      _taskQueue.removeAt(0);
 
-    final task = _tasks[_currentTaskIndex!];
-    if (task.isEnabled()) {
-      model.log(task.name, category: 2);
-      
-      _currentTask = task;
-      await task.run();
-      _currentTask = null;
+      if (task.isEnabled()) {
+        model.log(task.name, category: 2);
+        await task.run();
+      }
+
+      if (task.interval != null) {
+        Future.delayed(task.interval!, () => _addTaskToQueue(task));
+      } else {
+        _addTaskToQueue(task);
+      }
     }
 
     return true;
+  }
+
+  void _addTaskToQueue(ElmTask task) {
+    if (task.priority != null) {
+      final int index = min(task.priority! - 1, _taskQueue.length);
+      _taskQueue.insert(index, task);
+    } else {
+      _taskQueue.add(task);
+    }
   }
 
   void connect() async {
