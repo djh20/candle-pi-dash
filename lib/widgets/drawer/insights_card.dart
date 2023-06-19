@@ -88,7 +88,6 @@ class InsightsCardContent extends StatelessWidget {
                   UnitText(
                     power.round().toString(),
                     unit: 'kW',
-                    scale: 0.9
                   ),
                 ],
               ),
