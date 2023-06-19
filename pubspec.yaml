@@ -40,6 +40,7 @@ dependencies:
   package_info_plus: ^1.4.3+1
   permission_handler: ^10.2.0
   property_change_notifier: ^0.3.0
+  screen_state: ^2.0.0
   tcp_socket_connection: ^0.3.1
   wakelock: ^0.6.1
 

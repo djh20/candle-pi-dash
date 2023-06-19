@@ -11,7 +11,7 @@ class ConnectingCluster extends StatelessWidget {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const ['connecting'],
       builder: (context, model, properties) {
-        if (model?.vehicle.connecting == true) {
+        if (model?.vehicle.connectionType != null) {
           return const CircularProgressIndicator();
         }
 
@@ -19,54 +19,57 @@ class ConnectingCluster extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-
             children: [
-              OutlinedButton(
-                onPressed: () => model?.vehicle.connect(ElmConnectionType.bluetooth), 
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.bluetooth, size: 64),
-                      SizedBox(width: 10),
-                      Text("Bluetooth", style: TextStyle(fontSize: 32))
-                    ],
-                  ),
-                )
+              const Text(
+                "Choose connection method",
+                style: TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 20),
-              OutlinedButton(
-                onPressed: () => model?.vehicle.connect(ElmConnectionType.wifi),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.wifi, size: 64),
-                      SizedBox(width: 20),
-                      Text("WiFi", style: TextStyle(fontSize: 32))
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      model?.vehicle.connectionType = ElmConnectionType.bluetooth;
+                      model?.vehicle.connect();
+                    }, 
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text("Bluetooth", style: TextStyle(fontSize: 36)),
+                    )
+                  ),
+                  const SizedBox(width: 20),
+                  OutlinedButton(
+                    onPressed: () {
+                      model?.vehicle.connectionType = ElmConnectionType.wifi;
+                      model?.vehicle.connect();
+                    }, 
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text("WiFi", style: TextStyle(fontSize: 36)),
+                    )
+                  ),
+                  /*
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Icon(Icons.bluetooth, size: 38),
+                      Transform.scale(
+                        scale: 1.3,
+                        child: const CircularProgressIndicator(strokeWidth: 2)
+                      )
                     ],
                   ),
-                )
-              ),
-              /*
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Icon(Icons.bluetooth, size: 38),
-                  Transform.scale(
-                    scale: 1.3,
-                    child: const CircularProgressIndicator(strokeWidth: 2)
-                  )
+                  const SizedBox(width: 16),
+                  const Text(
+                    "Connecting...", 
+                    style: TextStyle(fontSize: 32)
+                  ),
+                  */
                 ],
               ),
-              const SizedBox(width: 16),
-              const Text(
-                "Connecting...", 
-                style: TextStyle(fontSize: 32)
-              ),
-              */
             ],
           ),
         );

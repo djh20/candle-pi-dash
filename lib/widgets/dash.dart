@@ -23,6 +23,7 @@ class Dash extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
+            const SideDrawer(),
             AnimatedPadding(
               duration: const Duration(milliseconds: 300),
               curve: Curves.fastOutSlowIn,
@@ -39,7 +40,6 @@ class Dash extends StatelessWidget {
                   : const ConnectingCluster()
               )
             ),
-            const SideDrawer(),
             const Roof(),
             const TurnSignalOverlay()
           ],

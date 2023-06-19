@@ -27,6 +27,7 @@ class Vehicle {
   final Map<int, CanTopic> _topics = {};
   final List<ElmTask> _tasks = [];
 
+  ElmConnectionType? connectionType;
   bool connected = false;
   bool connecting = false;
 
@@ -58,7 +59,7 @@ class Vehicle {
   int? _recordingStartMs;
   String _recordedData = "";
 
-  late StreamSubscription<Position> _positionSubscription;
+  StreamSubscription<Position>? _positionSubscription;
 
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
@@ -441,8 +442,6 @@ class Vehicle {
       ),
       Metric(id: "gps_distance", defaultValue: 0.0),
     ]);
-
-    _initGps();
   }
 
   void registerMetric(Metric metric) {
@@ -825,8 +824,8 @@ class Vehicle {
     }
   }
 
-  void connect(ElmConnectionType connectionType) async {
-    if (connected || connecting) return;
+  void connect() async {
+    if (connected || connecting || connectionType == null) return;
 
     connecting = true;
     model.notify('connecting');
@@ -866,6 +865,8 @@ class Vehicle {
         await _socketConnection!.connect(5000, processIncomingData);
         connected = true;
       }
+      //await Future.delayed(const Duration(seconds:5));
+      //connected = true;
     }
 
     connecting = false;
@@ -893,9 +894,10 @@ class Vehicle {
       });
 
       model.notify('connected');
+      _initGps();
     } else {
       model.log('Connection failed!');
-      //Future.delayed(const Duration(milliseconds: 500), connect);
+      Future.delayed(const Duration(milliseconds: 500), connect);
     }
   }
 
@@ -914,6 +916,8 @@ class Vehicle {
 
     _socketConnection?.disconnect();
     _socketConnection = null;
+
+    _positionSubscription?.cancel();
     
     connected = false;
     model.notify('connected');
@@ -924,17 +928,15 @@ class Vehicle {
     model.log('Disconnected!');
   }
 
-  /*
   void reconnect() {
     if (connecting) return;
 
     disconnect(); connect();
   }
-  */
 
   void dispose() {
     disconnect();
-    _positionSubscription.cancel();
+    _positionSubscription?.cancel();
   }
 
   File getDataFile() => File('/storage/emulated/0/Download/data.txt');
