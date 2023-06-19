@@ -12,6 +12,7 @@ import 'package:candle_dash/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:tcp_socket_connection/tcp_socket_connection.dart';
 import 'package:collection/collection.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:wakelock/wakelock.dart';
@@ -42,6 +43,7 @@ class Vehicle {
   
   String? _btAddress;
   BluetoothConnection? _btConnection;
+  TcpSocketConnection? _socketConnection;
 
   String _buffer = "";
 
@@ -605,9 +607,9 @@ class Vehicle {
     model.notify(metric.id);
   }
 
-  void processIncomingData(Uint8List data) {
-    for (var charCode in data) {
-      String char = String.fromCharCode(charCode);
+  void processIncomingData(String data) {
+    for (var char in data.characters) {
+      //String char = String.fromCharCode(charCode);
       
       if (char == ">") {
         for (var command in _pendingCommands) {
@@ -778,6 +780,7 @@ class Vehicle {
   Future<bool> sendCommand(ElmCommand command) {
     model.log('TX: ${command.text}');
     _btConnection?.output.add(ascii.encode('${command.text}\r'));
+    _socketConnection?.sendMessage('${command.text}\r');
     _pendingCommands.add(command);
 
     command.timer = Timer(command.timeout, () => _completeCommand(command, false));
@@ -822,45 +825,59 @@ class Vehicle {
     }
   }
 
-  void connect() async {
+  void connect(ElmConnectionType connectionType) async {
     if (connected || connecting) return;
 
-    if (_btAddress == null && await bluetoothSerial.isAvailable == true) {
-      var bondedDevices = await bluetoothSerial.getBondedDevices();
-      if (bondedDevices.isNotEmpty) {
-        _btAddress = bondedDevices[0].address;
-      }
-    }
+    connecting = true;
+    model.notify('connecting');
 
-    if (_btAddress != null) {
-      connecting = true;
-      model.log('Connecting to $_btAddress');
-      
-      //final pos = await _determinePosition();
-      //model.log('${pos.latitude}, ${pos.longitude}');
-
-      try {
-        var connection = await BluetoothConnection.toAddress(_btAddress);
-        if (connection.isConnected) {
-          connected = true;
-          _btConnection = connection;
-          connection.input?.listen(processIncomingData);
+    if (connectionType == ElmConnectionType.bluetooth) {
+      if (_btAddress == null && await bluetoothSerial.isAvailable == true) {
+        var bondedDevices = await bluetoothSerial.getBondedDevices();
+        if (bondedDevices.isNotEmpty) {
+          _btAddress = bondedDevices[0].address;
         }
-
-      } catch (exception) {
-        debugPrint(exception.toString());
       }
 
-      connecting = false;
+      if (_btAddress != null) {
+        model.log('Connecting to $_btAddress');
+        
+        //final pos = await _determinePosition();
+        //model.log('${pos.latitude}, ${pos.longitude}');
+
+        try {
+          var connection = await BluetoothConnection.toAddress(_btAddress);
+          if (connection.isConnected) {
+            connected = true;
+            _btConnection = connection;
+            connection.input?.listen(
+              (charCodes) => processIncomingData(String.fromCharCodes(charCodes))
+            );
+          }
+
+        } catch (exception) {
+          debugPrint(exception.toString());
+        }
+      }
+
+    } else if (connectionType == ElmConnectionType.wifi) {
+      _socketConnection = TcpSocketConnection("192.168.0.10", 35000);
+      if (await _socketConnection!.canConnect(5000)) {
+        await _socketConnection!.connect(5000, processIncomingData);
+        connected = true;
+      }
     }
 
-    if (_btConnection != null && connected) {
+    connecting = false;
+    model.notify('connecting');
+
+    if (connected) {
       model.log('Connected!');
       
       Future.delayed(const Duration(milliseconds: 50), () async {
         model.log('Initializing...');
         await sendCommand(ElmCommand("AT Z"));
-        await Future.delayed(const Duration(seconds: 4));
+        await Future.delayed(const Duration(seconds: 2));
         await sendCommand(ElmCommand("AT E0"));
         await sendCommand(ElmCommand("AT S0"));
         await sendCommand(ElmCommand("AT L0"));
@@ -878,7 +895,7 @@ class Vehicle {
       model.notify('connected');
     } else {
       model.log('Connection failed!');
-      Future.delayed(const Duration(milliseconds: 500), connect);
+      //Future.delayed(const Duration(milliseconds: 500), connect);
     }
   }
 
@@ -894,6 +911,9 @@ class Vehicle {
     _btConnection?.close();
     _btConnection?.dispose();
     _btConnection = null;
+
+    _socketConnection?.disconnect();
+    _socketConnection = null;
     
     connected = false;
     model.notify('connected');
@@ -904,11 +924,13 @@ class Vehicle {
     model.log('Disconnected!');
   }
 
+  /*
   void reconnect() {
     if (connecting) return;
 
     disconnect(); connect();
   }
+  */
 
   void dispose() {
     disconnect();

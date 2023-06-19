@@ -37,7 +37,7 @@ class _AppState extends State<App> {
     //model.updateTime();
     //model.updateTheme();
     
-    model.vehicle.connect();
+    //model.vehicle.connect();
   }
 
   @override

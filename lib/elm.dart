@@ -5,6 +5,11 @@ import 'package:candle_dash/can.dart';
 import 'package:candle_dash/utils.dart';
 import 'package:candle_dash/vehicle.dart';
 
+enum ElmConnectionType {
+  bluetooth,
+  wifi
+}
+
 abstract class ElmTask {
   final String name;
   final Vehicle vehicle;

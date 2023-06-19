@@ -509,6 +509,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
+  tcp_socket_connection:
+    dependency: "direct main"
+    description:
+      name: tcp_socket_connection
+      sha256: "9b11a30791464a6ed5263d9879c267f672cc4b0c3f716d953be2a1703325c7d7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.1"
   term_glyph:
     dependency: transitive
     description:
