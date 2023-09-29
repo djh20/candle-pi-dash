@@ -611,7 +611,8 @@ class Vehicle {
       //String char = String.fromCharCode(charCode);
       
       if (char == ">") {
-        for (var command in _pendingCommands) {
+        var _commandsToComplete = _pendingCommands.toList();
+        for (var command in _commandsToComplete) {
           _completeCommand(command, true);
         }
 
