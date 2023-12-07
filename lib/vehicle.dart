@@ -12,7 +12,8 @@ import 'package:candle_dash/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
-import 'package:tcp_socket_connection/tcp_socket_connection.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+//import 'package:tcp_socket_connection/tcp_socket_connection.dart';
 import 'package:collection/collection.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:wakelock/wakelock.dart';
@@ -44,7 +45,8 @@ class Vehicle {
   
   String? _btAddress;
   BluetoothConnection? _btConnection;
-  TcpSocketConnection? _socketConnection;
+  //TcpSocketConnection? _socketConnection;
+  WebSocketChannel? _wsChannel;
 
   String _buffer = "";
 
@@ -780,7 +782,8 @@ class Vehicle {
   Future<bool> sendCommand(ElmCommand command) {
     model.log('TX: ${command.text}');
     _btConnection?.output.add(ascii.encode('${command.text}\r'));
-    _socketConnection?.sendMessage('${command.text}\r');
+    //_socketConnection?.sendMessage('${command.text}\r');
+    _wsChannel?.sink.add('${command.text}\r');
     _pendingCommands.add(command);
 
     command.timer = Timer(command.timeout, () => _completeCommand(command, false));
@@ -861,13 +864,15 @@ class Vehicle {
       }
 
     } else if (connectionType == ElmConnectionType.wifi) {
-      _socketConnection = TcpSocketConnection("192.168.0.10", 35000);
-      if (await _socketConnection!.canConnect(5000)) {
-        await _socketConnection!.connect(5000, processIncomingData);
+      try {
+        _wsChannel = WebSocketChannel.connect(Uri.parse("ws://192.168.0.10/ws"));
         connected = true;
+        _wsChannel?.stream.listen((message) {
+          processIncomingData(message);
+        });
+      } catch (exception) {
+        debugPrint(exception.toString());
       }
-      //await Future.delayed(const Duration(seconds:5));
-      //connected = true;
     }
 
     connecting = false;
@@ -915,8 +920,8 @@ class Vehicle {
     _btConnection?.dispose();
     _btConnection = null;
 
-    _socketConnection?.disconnect();
-    _socketConnection = null;
+    _wsChannel?.sink.close(WebSocketStatus.goingAway);
+    _wsChannel = null;
 
     _positionSubscription?.cancel();
     
