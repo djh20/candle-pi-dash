@@ -17,12 +17,15 @@ class Speedometer extends StatelessWidget {
         'powered',
         'gear',
         'drawer',
-        'speedLimit'],
+        'speedLimit',
+        'parking_brake'
+      ],
       builder: (context, model, properties) {
         final double speed = model?.vehicle.getMetricDouble('speed') ?? 0;
         final double? speedLimit = model?.vehicle.speedLimit?.toDouble();
         
         final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
+        final bool parkingBrake = model?.vehicle.getMetricBool('parking_brake') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
         final int gear = model?.vehicle.getMetric('gear');
 
@@ -30,7 +33,8 @@ class Speedometer extends StatelessWidget {
         final String text = gearSymbol == '' ? speed.round().toString() : gearSymbol;
 
         Color speedColor = powered ? 
-          (theme.textTheme.bodyText1?.color ?? Colors.black) 
+          parkingBrake ? Colors.red
+          : (theme.textTheme.bodyLarge?.color ?? Colors.black) 
           : theme.hintColor;
 
         if (
@@ -58,7 +62,7 @@ class Speedometer extends StatelessWidget {
           );
         }
 
-        final bool powerBarVisible = (gear > 1);
+        final bool powerBarVisible = (gear > 0);
 
         return AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 300),

@@ -29,7 +29,7 @@ class UnitText extends StatelessWidget {
           const SizedBox(width: 2),
 
           Text(
-            (unit ?? '').toLowerCase(),
+            (unit ?? ''),
             style: TextStyle(
               fontSize: 20 * scale,
               height: 2.2

@@ -18,13 +18,13 @@ class PowerBar extends StatelessWidget {
     const Color inColor = chargeColor;
 
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['power_output', 'powered', 'gear'],
+      properties: const ['battery_power', 'powered', 'gear'],
       builder: (context, model, properties) {
-        double power = model?.vehicle.getMetricDouble('power_output') ?? 0.0;
+        double power = model?.vehicle.getMetricDouble('battery_power') ?? 0.0;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
 
         // Vehicle must not be in park to show power.
-        final bool visible = (gear > 1);
+        final bool visible = (gear > 0);
         
         return AnimatedOpacity(
           opacity: visible ? 1 : 0,

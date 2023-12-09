@@ -2,7 +2,7 @@
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
 import 'package:candle_dash/widgets/drawer/card.dart';
-import 'package:candle_dash/widgets/drawer/insights_card.dart';
+import 'package:candle_dash/widgets/drawer/battery_card.dart';
 import 'package:candle_dash/widgets/drawer/metrics_card.dart';
 import 'package:candle_dash/widgets/drawer/navigation_card.dart';
 import 'package:candle_dash/widgets/drawer/performance_card.dart';
@@ -47,10 +47,10 @@ class SideDrawer extends StatelessWidget {
                 ],
               ),
               DrawerCard(
-                title: 'Insights', // Insights,
-                icon: Icons.search_rounded,
+                title: 'Battery',
+                icon: Icons.battery_full,
                 children: [
-                  InsightsCardContent()
+                  BatteryCardContent()
                 ],
               ),
               DrawerCard(

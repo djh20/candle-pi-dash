@@ -11,26 +11,29 @@ class Roof extends StatelessWidget {
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
       properties: const [
-        'connected', 
+        'powered', 
         'speedLimit', 
         'fan_speed',
         'eco',
         'drawer',
-        'gear'
+        'gear',
+        'headlights'
       ],
       builder: (context, model, properties) {
-        final bool connected = model?.vehicle.connected ?? false;
+        final bool powered = model?.vehicle.getMetricBool("powered") ?? false;
         final bool eco = model?.vehicle.getMetricBool('eco') ?? false;
         final bool drawerOpen = model?.drawerOpen ?? false;
         //final bool powered = model?.vehicle.getMetricBool('powered') ?? false;
         final int gear = model?.vehicle.getMetric('gear') ?? 0;
-        final bool parked = (gear <= 1);
+        final bool parked = (gear == 0);
 
         final int fanSpeed = model?.vehicle.getMetric('fan_speed') ?? 0;
         final int fanSpeedPercent = ((fanSpeed / 7) * 100).round();
 
+        final bool headlights = model?.vehicle.getMetricBool('headlights') ?? false;
+
         return AnimatedOpacity(
-          opacity: connected ? 1 : 0,
+          opacity: powered ? 1 : 0,
           duration: const Duration(milliseconds: 250),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -48,6 +51,12 @@ class Roof extends StatelessWidget {
                       active: eco,
                       text: "ECO",
                       color: Colors.green,
+                      compact: drawerOpen
+                    ),
+                    StatusIcon(
+                      icon: Icons.wb_twilight,
+                      active: headlights,
+                      color: Colors.blue,
                       compact: drawerOpen
                     ),
                     StatusIcon(

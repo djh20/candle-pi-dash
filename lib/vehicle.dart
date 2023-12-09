@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
 import 'package:candle_dash/utils.dart';
+import 'package:eventsource/eventsource.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/status.dart' as status;
@@ -20,7 +23,8 @@ class Vehicle {
   bool connecting = false;
   //bool initialized = false;
 
-  late IOWebSocketChannel socket;
+  //late IOWebSocketChannel socket;
+  EventSource? eventSource;
 
   late PerformanceTracking pTracking;
 
@@ -31,12 +35,21 @@ class Vehicle {
   int? displayedSpeedLimit;
   int displayedSpeedLimitAge = 0;
 
-  LatLng position = LatLng(0, 0);
   double bearingRad = 0;
   double bearingDeg = 0;
 
+  Timer? _socketTimer;
+  late final Timer _connectTimer;
+  bool allowConnection = true;
+
+  StreamSubscription<Position>? _positionSubscription;
+  bool gpsLock = false;
+  LatLng? gpsPosition;
+  double gpsDistance = 0;
+
   Vehicle(this.model) {
     pTracking = PerformanceTracking(this, [20, 40, 60, 80, 100]);
+    _connectTimer = Timer.periodic(const Duration(seconds: 1), (t) => onConnectTimer());
   }
 
   dynamic getMetric(String id) {
@@ -57,12 +70,13 @@ class Vehicle {
       if (metrics["powered"] == 1) {
         Wakelock.enable();
         model.alertsEnabled = true;
-        model.showAlert("experimental");
+        //model.showAlert("experimental");
 
       } else {
         Wakelock.disable();
         pTracking.setTracking(false);
         
+        /*
         // Close drawer
         model.drawerOpen = false;
         model.hPageController.animateToPage(
@@ -70,13 +84,14 @@ class Vehicle {
           duration: const Duration(milliseconds: 500), 
           curve: Curves.easeInOutQuad
         );
+        */
 
         // Allow all alerts to be shown again (for next trip).
         model.shownAlerts.clear();
         model.alertsEnabled = false;
 
         // So we will start on the map page next time the drawer is opened.
-        model.vPage = 0;
+        //model.vPage = 0;
 
         // Clear any cached data.
         rootBundle.clear();
@@ -114,38 +129,9 @@ class Vehicle {
       int range = metrics["range"];
       if (range > 0 && range <= 10) model.showAlert("low_range");
 
-    } else if (ids.contains("gps_lat") || ids.contains("gps_lng")) {
-      double lat = metrics["gps_lat"];
-      double lng = metrics["gps_lng"];
-
-      const distance = Distance();
-      final oldPos = position;
-      final newPos = LatLng(lat, lng);
-      
-      final double distanceM = distance.as(
-        LengthUnit.Meter,
-        oldPos,
-        newPos
-      );
-
-      /// Update the map only if the vehicle has moved at least 5m.
-      /// This stops the map from moving and rotating when the vehicle is not
-      /// moving.
-      if (distanceM >= 5) {
-        Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
-        bearingRad = bearing.radians;
-        bearingDeg = bearing.degrees;
-
-        debugPrint("$oldPos -> $newPos = $bearingDeg");
-        model.updateMap(newPos, bearingDeg);
-      }
-
-      position = newPos;
-
-    } else if (ids.contains("gps_lock") && metrics["gps_lock"] == 0) {
-      speedLimit = null;
-      displayedSpeedLimitAge = 999999;
-      model.notify("speedLimit");
+    } else if (ids.contains("charge_status") && metrics["charge_status"] > 0) {
+      gpsDistance = 0;
+      model.notify("gps");
     }
    
     for (var id in ids) {
@@ -153,7 +139,13 @@ class Vehicle {
     }
   }
 
+  void restartSocketTimer() {
+    _socketTimer?.cancel();
+    _socketTimer = Timer(const Duration(seconds: 5), () => disconnect());
+  }
+
   void process(String data) {
+    restartSocketTimer();
     final decodedData = jsonDecode(data);
     List<String> updatedMetrics = [];
     
@@ -171,56 +163,167 @@ class Vehicle {
     if (connected || connecting) return;
 
     connecting = true;
-    debugPrint('[websocket] connecting...');
+    debugPrint('[sse] connecting...');
 
     try {
+      /*
       final ws = await WebSocket
         .connect('ws://$host/ws')
         .timeout(const Duration(seconds: 5));
 
       ws.pingInterval = const Duration(seconds: 2);
 
-      debugPrint('[websocket] connected!');
+      debugPrint('[sse] connected!');
       socket = IOWebSocketChannel(ws);
+      */
+      eventSource = await EventSource.connect('http://$host/events');
+      eventSource?.listen(
+        (event) { 
+          if (event.data == null) return;
+          process(event.data!);
+        }
+      );
+      restartSocketTimer();
 
       connecting = false; connected = true;
+      _initGps();
+      debugPrint('[sse] connected');
       
       model.notify('connected');
-      //this.car.model.update();
 
-      socket.stream.listen((data) {
-        process(data);
-      },
-        onDone: () => reconnect()
-      );
-
-      //socket.sink.add('subscribe_binary');
     } catch (exception) {
+      debugPrint(exception.toString());
       connecting = false;
+      /*
       Future.delayed(const Duration(milliseconds: 500), () {
         reconnect();
       });
-      debugPrint('[websocket] connection failed!');
+      */
+      debugPrint('[sse] connection failed!');
     }
   }
 
-  void close() {
+  void disconnect() {
     if (!connected) return;
 
-    socket.sink.close(status.goingAway);
+    _socketTimer?.cancel();
+    eventSource?.client.close();
     connected = false;
     //initialized = false;
     metrics.clear();
+    _positionSubscription?.cancel();
 
-    debugPrint('[websocket] closed');
+    debugPrint('[sse] disconnected');
 
     model.notify('connected');
   }
 
+  /*
   void reconnect() {
     if (connecting) return;
 
-    close(); connect();
+    disconnect(); connect();
+  }
+  */
+
+  void onConnectTimer() {
+    if (!connected && !connecting && allowConnection) {
+      connect();
+    
+    } else if (connected && !allowConnection) {
+      disconnect();
+    }
+  }
+
+  Future<void> _initGps() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the 
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also where
+        // Android's shouldShowRequestPermissionRationale 
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error('Location permissions are denied');
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are denied forever, handle appropriately. 
+      return Future.error(
+        'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 30
+    );
+
+    _positionSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+    (Position? position) {
+      debugPrint(position.toString());
+      _setGpsLock(position != null);
+      if (position == null) return;
+
+      _updatePosition(position.latitude, position.longitude);
+    });
+  }
+
+  void _setGpsLock(bool lock) {
+    if (!lock) {
+      speedLimit = null;
+      displayedSpeedLimitAge = 999999;
+      model.notify("speedLimit");
+    }
+    gpsLock = lock;
+    model.notify("gps");
+  }
+
+  void _updatePosition(double lat, double lng) {
+    const distance = Distance();
+    final oldPos = gpsPosition;
+    final newPos = LatLng(lat, lng);
+
+    if (oldPos != null) {
+      final double distanceKm = distance.as(
+        LengthUnit.Meter,
+        oldPos,
+        newPos
+      ) / 1000;
+
+      Bearing bearing = getBearingBetweenPoints(oldPos, newPos);
+      bearingRad = bearing.radians;
+      bearingDeg = bearing.degrees;
+
+      debugPrint("$oldPos -> $newPos = $bearingDeg");
+      model.updateMap(newPos, bearingDeg);
+
+      int gear = getMetric("gear");
+
+      if (distanceKm <= 100 && gear > 0) {
+        debugPrint("MOVED $distanceKm KM");
+        gpsDistance += distanceKm;
+      }
+
+    } else {
+      model.updateMap(newPos, 0);
+    }
+
+    gpsPosition = newPos;
+    model.notify("gps");
   }
 }
 

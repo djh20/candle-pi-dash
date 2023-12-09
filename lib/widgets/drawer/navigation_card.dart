@@ -1,5 +1,6 @@
 import 'package:candle_dash/constants.dart';
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/widgets/drawer/card_alert.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 //import 'package:flutter_map/flutter_map.dart';
@@ -12,21 +13,13 @@ class NavigationCardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ["gps_lock"],
+      properties: const ["gps"],
       builder: (context, model, properties) {
-        final bool gpsLocked = model?.vehicle.getMetricBool("gps_lock") ?? false;
+        final bool gpsLocked = model?.vehicle.gpsLock ?? false;
 
         return gpsLocked ? 
         const NavigationCardMap() : 
-        const SizedBox(
-          height: Constants.cardContentHeight,
-          child: Center(
-            child: Text(
-              "Location unavailable",
-              style: TextStyle(fontSize: 18)
-            )
-          )
-        );
+        const CardAlert(text: "Location unavailable");
       }
     );
   }

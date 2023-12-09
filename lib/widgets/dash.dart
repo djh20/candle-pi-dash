@@ -1,8 +1,10 @@
 import 'package:candle_dash/model.dart';
+import 'package:candle_dash/widgets/cluster/car_off_cluster.dart';
 import 'package:candle_dash/widgets/cluster/charging_cluster.dart';
 import 'package:candle_dash/widgets/cluster/connecting_cluster.dart';
 import 'package:candle_dash/widgets/dilate_transition.dart';
 import 'package:candle_dash/widgets/drawer/drawer.dart';
+import 'package:candle_dash/widgets/turn_signal_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:candle_dash/widgets/cluster/driving_cluster.dart';
 import 'package:candle_dash/widgets/roof.dart';
@@ -14,11 +16,13 @@ class Dash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PropertyChangeConsumer<AppModel, String>(
-      properties: const ['connected', 'plugged_in', 'drawer'],
+      properties: const ['connected', 'powered', 'charge_status', 'drawer'],
       builder: (context, model, properties) {
         final bool connected = (model?.vehicle.connected == true);
-        final bool pluggedIn = model?.vehicle.getMetricBool("plugged_in") ?? false;
-        
+        final bool powered = model?.vehicle.getMetricBool("powered") ?? false;
+        final int chargeStatus = model?.vehicle.getMetric("charge_status");
+        final bool pluggedIn = (chargeStatus > 0);
+
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -33,13 +37,14 @@ class Dash extends StatelessWidget {
                 switchOutCurve: Curves.fastOutSlowIn,
                 transitionBuilder: (child, animation) => 
                   DilateTransition(child: child, animation: animation),
-                child: connected ? 
+                child: connected ? powered ?
                   (pluggedIn ? const ChargingCluster() : const DrivingCluster())
-                  : const ConnectingCluster()
+                  : const CarOffCluster() : const ConnectingCluster()
               )
             ),
             const SideDrawer(),
             const Roof(),
+            const TurnSignalOverlay()
           ],
         );
       }
